@@ -44,6 +44,11 @@ models/*.gguf
 *.log
 logs/
 
+# AUR build artifacts
+aur/src/
+aur/pkg/
+aur/*.tar.gz
+
 # Misc
 *.swp
 *~
