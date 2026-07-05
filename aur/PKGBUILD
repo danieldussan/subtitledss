@@ -1,0 +1,68 @@
+# Maintainer: ddussan <ddussan@github.com>
+pkgname=subtitledss
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Real-time subtitle overlay for Linux, powered by Whisper"
+arch=('x86_64')
+url="https://github.com/danieldussan/subtitledss"
+license=('MIT')
+depends=(
+  'pipewire'
+  'libpipewire'
+  'alsa-lib'
+  'glibc'
+)
+makedepends=(
+  'rust'
+  'bun'
+  'cmake'
+)
+optdepends=(
+  'nvidia-utils: GPU acceleration (CUDA)'
+  'vulkan-driver: GPU acceleration (Vulkan)'
+)
+provides=('subtitledss')
+conflicts=('subtitledss-git')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/danieldussan/subtitledss/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$pkgname-$pkgver"
+
+  # Install frontend dependencies
+  bun install --frozen-lockfile
+
+  # Detect GPU and build with appropriate features
+  local features=""
+  if command -v nvcc &> /dev/null; then
+    echo "CUDA detected, building with GPU support..."
+    features="--features cuda"
+  elif pacman -Qs vulkan-driver &> /dev/null; then
+    echo "Vulkan detected, building with GPU support..."
+    features="--features vulkan"
+  else
+    echo "No GPU detected, building CPU-only..."
+  fi
+
+  # Build Rust backend
+  cd src-tauri
+  cargo build --release $features
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+
+  # Install binary
+  install -Dm755 "src-tauri/target/release/livetext" "$pkgdir/usr/bin/$pkgname"
+
+  # Install desktop file
+  install -Dm644 "aur/subtitledss.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
+
+  # Install icons
+  install -Dm644 "src-tauri/icons/icon.png" "$pkgdir/usr/share/icons/hicolor/512x512/apps/$pkgname.png"
+  install -Dm644 "src-tauri/icons/128x128.png" "$pkgdir/usr/share/icons/hicolor/128x128/apps/$pkgname.png"
+  install -Dm644 "src-tauri/icons/32x32.png" "$pkgdir/usr/share/icons/hicolor/32x32/apps/$pkgname.png"
+
+  # Install license
+  install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=subtitledss
+Comment=Real-time subtitle overlay for Linux
+Exec=subtitledss
+Icon=subtitledss
+Type=Application
+Categories=AudioVideo;Audio;
+Keywords=subtitle;transcription;whisper;real-time;
+StartupNotify=true
+Terminal=false
