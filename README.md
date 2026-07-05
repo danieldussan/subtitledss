@@ -90,7 +90,7 @@ bun install
 bun run tauri build
 ```
 
-The binary will be at `src-tauri/target/release/livetext`.
+The binary will be at `src-tauri/target/release/subtitledss`.
 
 #### Build with GPU Acceleration
 
@@ -136,7 +136,7 @@ cargo build --release --features vulkan
 
 ## Configuration
 
-Config file is stored at `~/.config/livetext/config.toml`:
+Config file is stored at `~/.config/subtitledss/config.toml`:
 
 ```toml
 [audio]

@@ -63,7 +63,7 @@ jobs:
           mkdir -p AppDir/usr/share/applications
           mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
 
-          cp src-tauri/target/release/livetext AppDir/usr/bin/subtitledss
+          cp src-tauri/target/release/subtitledss AppDir/usr/bin/subtitledss
           cp aur/subtitledss.desktop AppDir/usr/share/applications/subtitledss.desktop
           cp src-tauri/icons/icon.png AppDir/usr/share/icons/hicolor/512x512/apps/subtitledss.png
 
@@ -86,7 +86,7 @@ jobs:
           mkdir -p deb/usr/share/icons/hicolor/512x512/apps
           mkdir -p deb/usr/share/licenses/subtitledss
 
-          cp src-tauri/target/release/livetext deb/usr/bin/subtitledss
+          cp src-tauri/target/release/subtitledss deb/usr/bin/subtitledss
           cp aur/subtitledss.desktop deb/usr/share/applications/subtitledss.desktop
           cp src-tauri/icons/icon.png deb/usr/share/icons/hicolor/512x512/apps/subtitledss.png
           cp LICENSE deb/usr/share/licenses/subtitledss/LICENSE
@@ -109,7 +109,7 @@ jobs:
 
       - name: Build raw binary
         run: |
-          tar -czf subtitledss-${GITHUB_REF_NAME#v}-x86_64.tar.gz -C src-tauri/target/release livetext
+          tar -czf subtitledss-${GITHUB_REF_NAME#v}-x86_64.tar.gz -C src-tauri/target/release subtitledss
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -157,7 +157,7 @@ jobs:
             **Arch Linux (manual):**
             ```bash
             tar -xzf subtitledss-*.tar.gz
-            sudo cp livetext /usr/bin/subtitledss
+            sudo cp subtitledss /usr/bin/subtitledss
             ```
 
             **From source:**

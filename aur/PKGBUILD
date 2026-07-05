@@ -53,7 +53,7 @@ package() {
   cd "$pkgname-$pkgver"
 
   # Install binary
-  install -Dm755 "src-tauri/target/release/livetext" "$pkgdir/usr/bin/$pkgname"
+  install -Dm755 "src-tauri/target/release/subtitledss" "$pkgdir/usr/bin/$pkgname"
 
   # Install desktop file
   install -Dm644 "aur/subtitledss.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"

@@ -106,7 +106,7 @@ impl AppConfig {
     pub fn config_dir() -> PathBuf {
         dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("livetext")
+            .join("subtitledss")
     }
 
     pub fn config_file() -> PathBuf {
@@ -382,7 +382,7 @@ source = "microphone"
     #[test]
     fn test_config_dir_path() {
         let dir = AppConfig::config_dir();
-        assert!(dir.to_string_lossy().contains("livetext"));
+        assert!(dir.to_string_lossy().contains("subtitledss"));
     }
 
     #[test]

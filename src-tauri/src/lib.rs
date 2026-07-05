@@ -48,7 +48,7 @@ pub fn run() {
 
     let db_path = dirs::data_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("livetext")
+        .join("subtitledss")
         .join("history.db");
 
     let history_db = match HistoryDb::new(&db_path) {
@@ -61,7 +61,7 @@ pub fn run() {
 
     let models_dir = dirs::data_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
-        .join("livetext")
+        .join("subtitledss")
         .join("models");
 
     let model_manager = Arc::new(Mutex::new(ModelManager::new(models_dir)));
@@ -119,7 +119,7 @@ pub fn run() {
             let model_name = &config.whisper.model;
             let models_dir = dirs::data_dir()
                 .unwrap_or_else(|| std::path::PathBuf::from("."))
-                .join("livetext")
+                .join("subtitledss")
                 .join("models");
             let model_path = models_dir.join(format!("ggml-{}.bin", model_name));
 

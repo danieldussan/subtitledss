@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Project Overview
-**subtitledss** (package name: `livetext`) - Real-time subtitle overlay for Linux
+**subtitledss** (package name: `subtitledss`) - Real-time subtitle overlay for Linux
 - Open source, MIT license
 - 100% offline, no cloud services
 - Optimized for Arch Linux, Wayland, Hyprland

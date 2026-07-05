@@ -1,14 +1,14 @@
 [package]
-name = "livetext"
+name = "subtitledss"
 version = "0.1.0"
 description = "Real-time subtitle overlay for Linux"
-authors = ["ddussan"]
+authors = ["Daniel Dussan"]
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/danieldussan/subtitledss"
 
 [lib]
-name = "livetext_lib"
+name = "subtitledss_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
