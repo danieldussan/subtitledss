@@ -14,6 +14,7 @@ export function ThemeSettings({ config, onSave }: ThemeSettingsProps) {
   const [opacity, setOpacity] = useState(config.overlay.opacity);
   const [autoHide, setAutoHide] = useState(config.overlay.auto_hide);
   const [autoHideDelay, setAutoHideDelay] = useState(config.overlay.auto_hide_delay);
+  const [maxLineWidth, setMaxLineWidth] = useState(config.overlay.max_line_width);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +30,7 @@ export function ThemeSettings({ config, onSave }: ThemeSettingsProps) {
           opacity,
           auto_hide: autoHide,
           auto_hide_delay: autoHideDelay,
+          max_line_width: maxLineWidth,
         },
       });
       setSaved(true);
@@ -200,6 +202,26 @@ export function ThemeSettings({ config, onSave }: ThemeSettingsProps) {
               </div>
             </div>
           )}
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="label mb-0">Max Line Width</label>
+              <span className="text-[13px] font-mono text-text-primary">{maxLineWidth} chars</span>
+            </div>
+            <input
+              type="range"
+              min="40"
+              max="120"
+              step="5"
+              value={maxLineWidth}
+              onChange={(e) => setMaxLineWidth(parseInt(e.target.value))}
+            />
+            <div className="flex justify-between text-[11px] text-text-muted mt-1">
+              <span>40</span>
+              <span>80</span>
+              <span>120</span>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup 2 — Settings Reorganization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: 'Inter', -apple-system, sans-serif; font-size: 14px; line-height: 1.5; color: #e8ecf4; background: #0c0f14; overflow: hidden; }
+  :root {
+    --bg-base: #0c0f14; --bg-raised: #141920; --bg-overlay: #1c2333; --bg-surface: #232c3b; --bg-hover: #2a3445;
+    --border-subtle: #1e2736; --border-default: #2a3445; --border-strong: #3a4658;
+    --text-primary: #e8ecf4; --text-secondary: #8b95a9; --text-muted: #5c6882;
+    --accent: #5b8def; --accent-hover: #4a7de0; --accent-subtle: rgba(91,141,239,0.12); --accent-muted: rgba(91,141,239,0.25);
+    --success: #34d399; --success-subtle: rgba(52,211,153,0.12);
+    --warning: #fbbf24; --warning-subtle: rgba(251,191,36,0.12);
+    --danger: #f87171; --danger-subtle: rgba(248,113,113,0.12);
+  }
+  .app { display: flex; height: 100vh; }
+
+  /* Sidebar */
+  .sidebar { width: 220px; min-width: 220px; background: var(--bg-raised); border-right: 1px solid var(--border-subtle); display: flex; flex-direction: column; padding: 16px 0; }
+  .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 0 16px 20px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 12px; }
+  .sidebar-brand-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--accent-subtle); color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; }
+  .sidebar-brand-text { font-weight: 600; font-size: 15px; }
+  .sidebar-brand-sub { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+  .sidebar-section { padding: 0 8px; margin-bottom: 8px; }
+  .sidebar-section-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: 0 8px 6px; }
+  .sidebar-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; font-size: 13px; font-weight: 500; color: var(--text-secondary); position: relative; }
+  .sidebar-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .sidebar-item.active { background: var(--accent-subtle); color: var(--accent); }
+  .sidebar-item.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 16px; background: var(--accent); border-radius: 0 3px 3px 0; }
+  .sidebar-item svg { width: 18px; height: 18px; opacity: 0.7; }
+  .sidebar-item.active svg { opacity: 1; }
+
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: var(--bg-raised); border-bottom: 1px solid var(--border-subtle); min-height: 52px; }
+  .topbar-title { font-size: 16px; font-weight: 600; }
+  .content { flex: 1; overflow-y: auto; display: flex; }
+
+  /* Settings Sub-nav */
+  .settings-nav { width: 180px; min-width: 180px; padding: 20px 12px; border-right: 1px solid var(--border-subtle); }
+  .settings-nav-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; font-weight: 500; color: var(--text-secondary);
+    transition: all 0.15s; margin-bottom: 2px;
+  }
+  .settings-nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .settings-nav-item.active { background: var(--accent-subtle); color: var(--accent); }
+  .settings-nav-item svg { width: 16px; height: 16px; opacity: 0.6; }
+  .settings-nav-item.active svg { opacity: 1; }
+
+  /* Settings Content */
+  .settings-content { flex: 1; padding: 24px 32px; overflow-y: auto; }
+  .settings-section { margin-bottom: 32px; }
+  .settings-section-title {
+    font-size: 15px; font-weight: 600; margin-bottom: 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .settings-section-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 0; border-bottom: 1px solid var(--border-subtle);
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label { font-size: 13px; font-weight: 500; }
+  .setting-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .setting-control { display: flex; align-items: center; gap: 8px; min-width: 200px; justify-content: flex-end; }
+
+  /* Input */
+  .input { background: var(--bg-base); border: 1px solid var(--border-default); border-radius: 8px; padding: 7px 12px; font-family: inherit; font-size: 13px; color: var(--text-primary); outline: none; transition: border-color 0.15s; width: 200px; }
+  .input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-subtle); }
+  .input-sm { width: 120px; padding: 5px 10px; font-size: 12px; }
+
+  /* Select */
+  .select {
+    background: var(--bg-base); border: 1px solid var(--border-default); border-radius: 8px;
+    padding: 7px 32px 7px 12px; font-family: inherit; font-size: 13px; color: var(--text-primary);
+    outline: none; cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b95a9' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+    min-width: 180px;
+  }
+  .select:focus { border-color: var(--accent); }
+
+  /* Toggle */
+  .toggle { position: relative; width: 40px; height: 22px; border-radius: 11px; background: var(--border-default); cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+  .toggle.active { background: var(--accent); }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: white; transition: transform 0.2s; }
+  .toggle.active::after { transform: translateX(18px); }
+
+  /* Slider */
+  .slider-container { display: flex; align-items: center; gap: 12px; min-width: 200px; justify-content: flex-end; }
+  .slider { -webkit-appearance: none; width: 140px; height: 4px; border-radius: 2px; background: var(--border-default); outline: none; }
+  .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 2px solid var(--bg-raised); }
+  .slider-value { font-size: 12px; font-weight: 600; color: var(--accent); min-width: 36px; text-align: right; font-family: 'JetBrains Mono', monospace; }
+
+  /* Card */
+  .card { background: var(--bg-raised); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 16px; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .card-title { font-size: 13px; font-weight: 600; }
+
+  /* Model cards */
+  .model-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .model-card {
+    background: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: 10px;
+    padding: 16px; cursor: pointer; transition: all 0.2s; position: relative;
+  }
+  .model-card:hover { border-color: var(--border-strong); }
+  .model-card.selected { border-color: var(--accent); background: var(--accent-subtle); }
+  .model-card.selected::after {
+    content: ''; position: absolute; top: 8px; right: 8px;
+    width: 18px; height: 18px; border-radius: 50%; background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: center;
+  }
+  .model-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .model-size { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+  .model-badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+  .model-badge.fast { background: var(--success-subtle); color: var(--success); }
+  .model-badge.balanced { background: var(--accent-subtle); color: var(--accent); }
+  .model-badge.precise { background: var(--warning-subtle); color: var(--warning); }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: none; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
+  .btn svg { width: 15px; height: 15px; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-default); }
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--border-subtle); margin: 24px 0; }
+
+  /* Annotations */
+  .annotation { position: fixed; padding: 8px 14px; border-radius: 8px; background: rgba(91,141,239,0.15); border: 1px solid rgba(91,141,239,0.3); color: var(--accent); font-size: 11px; font-weight: 600; pointer-events: none; z-index: 100; white-space: nowrap; }
+  .annotation::before { content: 'NEW'; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; background: var(--accent); color: white; padding: 1px 5px; border-radius: 3px; margin-right: 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon">S</div>
+      <div>
+        <div class="sidebar-brand-text">subtitledss</div>
+        <div class="sidebar-brand-sub">real-time subtitles</div>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Transcriptions
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Configure</div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+        Audio
+      </div>
+      <div class="sidebar-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+        Overlay
+      </div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        Shortcuts
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">Settings</div>
+    </div>
+    <div class="content">
+      <!-- Sub-nav for settings sections -->
+      <div class="settings-nav">
+        <div class="settings-nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>
+          General
+        </div>
+        <div class="settings-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Appearance
+        </div>
+        <div class="settings-nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Advanced
+        </div>
+      </div>
+
+      <div class="settings-content">
+        <!-- General Section -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+            Audio Input
+          </div>
+          <div class="settings-section-desc">Configure your audio source and input device.</div>
+          
+          <div class="card">
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">Source</div>
+                <div class="setting-desc">System audio or microphone input</div>
+              </div>
+              <div class="setting-control">
+                <select class="select">
+                  <option>System Audio</option>
+                  <option>Microphone</option>
+                </select>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">Device</div>
+                <div class="setting-desc">PipeWire default source</div>
+              </div>
+              <div class="setting-control">
+                <select class="select">
+                  <option>Default — PipeWire</option>
+                  <option>Monitor of Built-in Audio</option>
+                </select>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">VAD Threshold</div>
+                <div class="setting-desc">Voice activity detection sensitivity</div>
+              </div>
+              <div class="setting-control">
+                <div class="slider-container">
+                  <input type="range" class="slider" min="1" max="100" value="30">
+                  <div class="slider-value">0.030</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Model Section -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Whisper Model
+          </div>
+          <div class="settings-section-desc">Select the AI model for speech recognition. Larger models are more accurate but slower.</div>
+          
+          <div class="model-grid">
+            <div class="model-card">
+              <div class="model-name">Tiny</div>
+              <div class="model-size">39 MB</div>
+              <div class="model-badge fast">Fast</div>
+            </div>
+            <div class="model-card selected">
+              <div class="model-name">Base</div>
+              <div class="model-size">142 MB</div>
+              <div class="model-badge balanced">Balanced</div>
+            </div>
+            <div class="model-card">
+              <div class="model-name">Small</div>
+              <div class="model-size">466 MB</div>
+              <div class="model-badge balanced">Balanced</div>
+            </div>
+            <div class="model-card">
+              <div class="model-name">Medium</div>
+              <div class="model-size">1.5 GB</div>
+              <div class="model-badge precise">Precise</div>
+            </div>
+            <div class="model-card">
+              <div class="model-name">Large v3</div>
+              <div class="model-size">3.1 GB</div>
+              <div class="model-badge precise">Precise</div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top: 16px;">
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">Language</div>
+                <div class="setting-desc">Auto-detect or specify language</div>
+              </div>
+              <div class="setting-control">
+                <select class="select">
+                  <option>Auto-detect</option>
+                  <option>English</option>
+                  <option>Spanish</option>
+                </select>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">CPU Threads</div>
+                <div class="setting-desc">Number of processing threads</div>
+              </div>
+              <div class="setting-control">
+                <div class="slider-container">
+                  <input type="range" class="slider" min="1" max="8" value="4">
+                  <div class="slider-value">4</div>
+                </div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">GPU Acceleration</div>
+                <div class="setting-desc">Use GPU if available</div>
+              </div>
+              <div class="setting-control">
+                <div class="toggle"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Translation Section -->
+        <div class="settings-section">
+          <div class="settings-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+            Translation
+          </div>
+          <div class="settings-section-desc">Translate transcriptions in real-time using local Marian MT models.</div>
+          
+          <div class="card">
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">Enable Translation</div>
+                <div class="setting-desc">Translate text as it's transcribed</div>
+              </div>
+              <div class="setting-control">
+                <div class="toggle active"></div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">Direction</div>
+                <div class="setting-desc">Source → Target language</div>
+              </div>
+              <div class="setting-control" style="gap:8px;">
+                <select class="select" style="width:120px;min-width:120px;">
+                  <option>Spanish</option>
+                  <option>English</option>
+                </select>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="color:var(--text-muted);flex-shrink:0;"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                <select class="select" style="width:120px;min-width:120px;">
+                  <option>English</option>
+                  <option>Spanish</option>
+                </select>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div>
+                <div class="setting-label">Show Original</div>
+                <div class="setting-desc">Display source text alongside translation</div>
+              </div>
+              <div class="setting-control">
+                <div class="toggle active"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Annotations -->
+<div class="annotation" style="top: 16px; left: 440px;">Flat settings sections replace nested sub-tabs</div>
+<div class="annotation" style="top: 80px; left: 236px;">Context-aware sub-nav for settings categories</div>
+<div class="annotation" style="top: 200px; right: 80px;">Card-based model selection with visual tier badges</div>
+<div class="annotation" style="top: 360px; right: 80px;">Inline controls: sliders, toggles, dropdowns — no separate save buttons</div>
+
+</body>
+</html>

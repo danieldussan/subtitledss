@@ -15,63 +15,356 @@
         -webkit-font-smoothing: antialiased;
         user-select: none;
       }
-      #subtitle {
+      #lines {
         width: 100%;
         height: 100%;
         display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
         align-items: center;
-        justify-content: center;
-        padding: 12px 24px;
+        padding: 8px 24px;
+        gap: 4px;
       }
-      #subtitle p {
-        color: #ffffff;
-        font-size: 22px;
-        font-weight: 500;
+      .subtitle-line {
         text-align: center;
-        line-height: 1.5;
+        line-height: 1.4;
         text-shadow: 0 1px 4px rgba(0,0,0,0.7);
         background: rgba(12, 15, 20, 0.82);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
         border: 1px solid rgba(91, 141, 239, 0.15);
-        border-radius: 10px;
-        padding: 8px 20px;
+        border-radius: 8px;
+        padding: 6px 16px;
         max-width: 90%;
-        opacity: 0;
-        transition: opacity 0.25s ease;
+        transition: opacity 0.1s linear;
       }
-      #subtitle p.visible {
-        opacity: 1;
+      .subtitle-line .original {
+        color: #ffffff;
+        font-weight: 500;
+      }
+      .subtitle-line .translation {
+        color: #93b4f5;
+        font-size: 0.85em;
+        font-weight: 400;
+        margin-top: 2px;
       }
     </style>
   </head>
   <body>
     <div id="root" data-tauri-drag-region>
-      <div id="subtitle" data-tauri-drag-region>
-        <p id="text" data-tauri-drag-region></p>
-      </div>
+      <div id="lines" data-tauri-drag-region></div>
     </div>
     <script>
-      const textEl = document.getElementById('text');
-      let hideTimeout = null;
+      const linesContainer = document.getElementById('lines');
+      const lines = [];
+      let animFrameId = null;
 
-      function initTauri() {
-        if (window.__TAURI__ && window.__TAURI__.event) {
-          window.__TAURI__.event.listen('transcription', (event) => {
-            const { text } = event.payload;
-            if (!text) {
-              textEl.classList.remove('visible');
-              textEl.textContent = '';
-              if (hideTimeout) clearTimeout(hideTimeout);
+      let config = {
+        displayDurationMs: 10000,
+        fadeDurationMs: 3000,
+        maxVisibleLines: 4,
+        lineGap: 4,
+        fontSize: 22,
+        showOriginal: true,
+        maxLineWidth: 80,
+      };
+
+      // ── Accumulator ──────────────────────────────────────────────
+      // Batches short chunks into wider subtitle lines
+      let accumulator = {
+        text: '',
+        chunkTexts: [],
+        translationChunks: [],
+        createdAt: Date.now(),
+        timerId: null,
+      };
+
+      const ACCUMULATE_TIMEOUT_MS = 2000;
+
+      class SubtitleLine {
+        constructor(id, text, translation) {
+          this.id = id;
+          this.text = text;
+          this.translation = translation;
+          this.createdAt = Date.now();
+          this.opacity = 1.0;
+          this.element = null;
+          this.removed = false;
+          this._createElement();
+        }
+
+        _createElement() {
+          const div = document.createElement('div');
+          div.className = 'subtitle-line';
+          div.style.fontSize = `${config.fontSize}px`;
+          div.style.opacity = '1';
+
+          const original = document.createElement('div');
+          original.className = 'original';
+          original.textContent = this.text;
+          div.appendChild(original);
+
+          if (this.translation && config.showOriginal) {
+            const translation = document.createElement('div');
+            translation.className = 'translation';
+            translation.textContent = this.translation;
+            div.appendChild(translation);
+          }
+
+          this.element = div;
+        }
+
+        get elapsed() {
+          return Date.now() - this.createdAt;
+        }
+
+        get shouldFade() {
+          return this.elapsed > config.displayDurationMs;
+        }
+
+        get shouldRemove() {
+          return this.elapsed > config.displayDurationMs + config.fadeDurationMs;
+        }
+
+        get currentOpacity() {
+          if (!this.shouldFade) return 1.0;
+          const fadeElapsed = this.elapsed - config.displayDurationMs;
+          return Math.max(0, 1.0 - (fadeElapsed / config.fadeDurationMs));
+        }
+
+        update() {
+          if (this.removed) return;
+          this.opacity = this.currentOpacity;
+          if (this.element) {
+            this.element.style.opacity = String(this.opacity);
+          }
+          if (this.shouldRemove) {
+            this.remove();
+          }
+        }
+
+        remove() {
+          if (this.removed) return;
+          this.removed = true;
+          if (this.element && this.element.parentNode) {
+            this.element.parentNode.removeChild(this.element);
+          }
+        }
+      }
+
+      // ── Pending translations (keyed by chunk text) ───────────────
+      const pendingTranslations = new Map();
+
+      // ── Finalize accumulated text into a SubtitleLine ────────────
+      function finalizeAccumulator() {
+        if (!accumulator.text.trim()) return;
+
+        const lineText = accumulator.text.trim();
+        const id = Date.now();
+
+        // Collect translations for all chunks in this line
+        let translation = null;
+        const translations = [];
+        for (const chunk of accumulator.chunkTexts) {
+          const t = pendingTranslations.get(chunk);
+          if (t) {
+            translations.push(t);
+            pendingTranslations.delete(chunk);
+          }
+        }
+        if (translations.length > 0) {
+          translation = translations.join(' ');
+        }
+
+        const line = new SubtitleLine(id, lineText, translation);
+        lines.push(line);
+        linesContainer.appendChild(line.element);
+
+        while (lines.length > config.maxVisibleLines) {
+          const oldest = lines.shift();
+          oldest.remove();
+        }
+
+        linesContainer.style.gap = `${config.lineGap}px`;
+
+        // Reset accumulator
+        if (accumulator.timerId) {
+          clearTimeout(accumulator.timerId);
+        }
+        accumulator = {
+          text: '',
+          chunkTexts: [],
+          translationChunks: [],
+          createdAt: Date.now(),
+          timerId: null,
+        };
+      }
+
+      // ── Add a transcription chunk to the accumulator ─────────────
+      function addChunk(chunkText) {
+        if (!chunkText || !chunkText.trim()) return;
+
+        const trimmed = chunkText.trim();
+
+        // If accumulator is empty, start fresh
+        if (!accumulator.text) {
+          accumulator.text = trimmed;
+          accumulator.chunkTexts = [trimmed];
+          accumulator.createdAt = Date.now();
+        } else {
+          // Append with space
+          const newText = accumulator.text + ' ' + trimmed;
+
+          // If adding this chunk exceeds maxLineWidth, finalize current first
+          if (newText.length > config.maxLineWidth) {
+            finalizeAccumulator();
+            // Start new accumulator with this chunk
+            accumulator.text = trimmed;
+            accumulator.chunkTexts = [trimmed];
+            accumulator.createdAt = Date.now();
+          } else {
+            accumulator.text = newText;
+            accumulator.chunkTexts.push(trimmed);
+          }
+        }
+
+        // Reset timeout — finalize if no new chunk within 2s
+        if (accumulator.timerId) {
+          clearTimeout(accumulator.timerId);
+        }
+        accumulator.timerId = setTimeout(() => {
+          finalizeAccumulator();
+        }, ACCUMULATE_TIMEOUT_MS);
+      }
+
+      // ── Try to attach translation to existing lines ──────────────
+      function attachTranslation(chunkText, translation) {
+        if (!translation) return;
+
+        // First check: is this chunk part of the current accumulator?
+        if (accumulator.chunkTexts.includes(chunkText)) {
+          // Accumulate the translation
+          accumulator.translationChunks.push(translation);
+
+          // Build combined translation from all accumulated translations
+          const allTranslations = [...accumulator.translationChunks];
+          const combinedTranslation = allTranslations.join(' ');
+
+          // Find the last added line and update if it matches
+          // Or store for when we finalize
+          pendingTranslations.set(chunkText, translation);
+
+          // If we have a finalized line, try to attach
+          for (let i = lines.length - 1; i >= 0; i--) {
+            if (!lines[i].translation && lines[i].text.includes(chunkText)) {
+              lines[i].translation = combinedTranslation;
+              if (lines[i].element) {
+                const existingTranslation = lines[i].element.querySelector('.translation');
+                if (existingTranslation) {
+                  existingTranslation.textContent = combinedTranslation;
+                } else if (config.showOriginal) {
+                  const translationDiv = document.createElement('div');
+                  translationDiv.className = 'translation';
+                  translationDiv.textContent = combinedTranslation;
+                  lines[i].element.appendChild(translationDiv);
+                }
+              }
               return;
             }
-            textEl.textContent = text;
-            textEl.classList.add('visible');
-            if (hideTimeout) clearTimeout(hideTimeout);
-            hideTimeout = setTimeout(() => {
-              textEl.classList.remove('visible');
-            }, 5000);
+          }
+        }
+
+        // Second check: find in finalized lines by substring
+        for (let i = lines.length - 1; i >= 0; i--) {
+          if (lines[i].text.includes(chunkText) && !lines[i].translation) {
+            lines[i].translation = translation;
+            if (lines[i].element) {
+              const existingTranslation = lines[i].element.querySelector('.translation');
+              if (existingTranslation) {
+                existingTranslation.textContent = translation;
+              } else if (config.showOriginal) {
+                const translationDiv = document.createElement('div');
+                translationDiv.className = 'translation';
+                translationDiv.textContent = translation;
+                lines[i].element.appendChild(translationDiv);
+              }
+            }
+            return;
+          }
+        }
+
+        // Not found yet — store for later
+        pendingTranslations.set(chunkText, translation);
+      }
+
+      // ── Animation loop ───────────────────────────────────────────
+      function animationLoop() {
+        for (let i = lines.length - 1; i >= 0; i--) {
+          lines[i].update();
+          if (lines[i].removed) {
+            lines.splice(i, 1);
+          }
+        }
+
+        if (lines.length === 0) {
+          linesContainer.style.opacity = '0';
+        } else {
+          linesContainer.style.opacity = '1';
+        }
+
+        animFrameId = requestAnimationFrame(animationLoop);
+      }
+
+      // ── Tauri event listeners ────────────────────────────────────
+      function initTauri() {
+        if (window.__TAURI__ && window.__TAURI__.event) {
+          // Listen for transcription chunks
+          window.__TAURI__.event.listen('transcription', (event) => {
+            const { id, text, translation } = event.payload;
+
+            if (event.payload.config) {
+              Object.assign(config, event.payload.config);
+            }
+
+            if (!text) return;
+
+            // Add chunk to accumulator (may finalize into a line)
+            addChunk(text);
+
+            // If translation arrived inline, attach it
+            if (translation) {
+              attachTranslation(text, translation);
+            }
           });
+
+          // Listen for translation results (async, fire-and-forget)
+          window.__TAURI__.event.listen('translation-result', (event) => {
+            const { text, translation } = event.payload;
+            if (!translation) return;
+
+            attachTranslation(text, translation);
+          });
+
+          // Listen for config updates from main app
+          window.__TAURI__.event.listen('overlay-config-updated', (event) => {
+            const c = event.payload;
+            if (c.fontSize !== undefined) config.fontSize = c.fontSize;
+            if (c.showOriginal !== undefined) config.showOriginal = c.showOriginal;
+            if (c.maxVisibleLines !== undefined) config.maxVisibleLines = c.maxVisibleLines;
+            if (c.lineGap !== undefined) config.lineGap = c.lineGap;
+            if (c.maxLineWidth !== undefined) config.maxLineWidth = c.maxLineWidth;
+            if (c.displayDurationMs !== undefined) config.displayDurationMs = c.displayDurationMs;
+            if (c.fadeDurationMs !== undefined) config.fadeDurationMs = c.fadeDurationMs;
+            linesContainer.style.gap = `${config.lineGap}px`;
+
+            for (const line of lines) {
+              if (line.element) {
+                line.element.style.fontSize = `${config.fontSize}px`;
+              }
+            }
+          });
+
+          animationLoop();
         } else {
           setTimeout(initTauri, 100);
         }

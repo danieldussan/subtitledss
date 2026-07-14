@@ -41,6 +41,11 @@ pub struct OverlayConfig {
     pub background_color: String,
     pub auto_hide: bool,
     pub auto_hide_delay: u64,
+    pub display_duration_ms: u64,
+    pub fade_duration_ms: u64,
+    pub max_visible_lines: usize,
+    pub line_gap: u32,
+    pub max_line_width: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -48,6 +53,7 @@ pub struct TranslationConfig {
     pub enabled: bool,
     pub source_lang: String,
     pub target_lang: String,
+    pub show_original: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -86,11 +92,17 @@ impl Default for AppConfig {
                 background_color: "#00000080".to_string(),
                 auto_hide: true,
                 auto_hide_delay: 5000,
+                display_duration_ms: 10000,
+                fade_duration_ms: 3000,
+                max_visible_lines: 4,
+                line_gap: 4,
+                max_line_width: 80,
             },
             translation: TranslationConfig {
                 enabled: false,
                 source_lang: "en".to_string(),
                 target_lang: "es".to_string(),
+                show_original: true,
             },
             shortcuts: ShortcutsConfig {
                 toggle_capture: "Ctrl+Shift+S".to_string(),
@@ -202,6 +214,11 @@ mod tests {
         assert!(config.overlay.always_on_top);
         assert!(config.overlay.auto_hide);
         assert_eq!(config.overlay.auto_hide_delay, 5000);
+        assert_eq!(config.overlay.display_duration_ms, 10000);
+        assert_eq!(config.overlay.fade_duration_ms, 3000);
+        assert_eq!(config.overlay.max_visible_lines, 4);
+        assert_eq!(config.overlay.line_gap, 4);
+        assert_eq!(config.overlay.max_line_width, 80);
     }
 
     #[test]
@@ -210,6 +227,7 @@ mod tests {
         assert!(!config.translation.enabled);
         assert_eq!(config.translation.source_lang, "en");
         assert_eq!(config.translation.target_lang, "es");
+        assert!(config.translation.show_original);
     }
 
     #[test]
@@ -262,11 +280,17 @@ font_color = \"#00ff00\"\n\
 background_color = \"#000000cc\"\n\
 auto_hide = false\n\
 auto_hide_delay = 3000\n\
+display_duration_ms = 8000\n\
+fade_duration_ms = 2000\n\
+max_visible_lines = 3\n\
+line_gap = 6\n\
+max_line_width = 100\n\
 \n\
 [translation]\n\
 enabled = true\n\
 source_lang = \"en\"\n\
 target_lang = \"fr\"\n\
+show_original = false\n\
 \n\
 [shortcuts]\n\
 toggle_capture = \"Ctrl+Alt+S\"\n\
@@ -290,8 +314,14 @@ clear_history = \"Ctrl+Alt+H\"\n";
         assert_eq!(config.overlay.font_color, "#00ff00");
         assert!(!config.overlay.auto_hide);
         assert_eq!(config.overlay.auto_hide_delay, 3000);
+        assert_eq!(config.overlay.display_duration_ms, 8000);
+        assert_eq!(config.overlay.fade_duration_ms, 2000);
+        assert_eq!(config.overlay.max_visible_lines, 3);
+        assert_eq!(config.overlay.line_gap, 6);
+        assert_eq!(config.overlay.max_line_width, 100);
         assert!(config.translation.enabled);
         assert_eq!(config.translation.target_lang, "fr");
+        assert!(!config.translation.show_original);
         assert_eq!(config.shortcuts.toggle_capture, "Ctrl+Alt+S");
     }
 

@@ -34,6 +34,7 @@ pub async fn transcribe_audio(
         threads: threads.unwrap_or(4),
         gpu: false,
         translate: false,
+        ..Default::default()
     };
 
     let segments = engine.transcribe(&audio_data, &params).map_err(|e| e.to_string())?;

@@ -1,24 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { SettingsPanel } from "./components/Settings/SettingsPanel";
-import { HistoryList } from "./components/History/HistoryList";
-import { ModelList } from "./components/ModelManager/ModelList";
-import { ToastContainer } from "./components/ui/Toast";
+import { AppShell } from "./components/Layout/AppShell";
+import { OnboardingWizard } from "./components/Onboarding/OnboardingWizard";
+import { AppConfig } from "./hooks/useSettings";
 import { useToast } from "./hooks/useToast";
-import { Settings2, History, Brain, MonitorPlay, MonitorOff, Circle } from "lucide-react";
-
-type Tab = "settings" | "history" | "models";
 
 function App() {
-  const [activeTab, setActiveTab] = useState<Tab>("settings");
   const [isCapturing, setIsCapturing] = useState(false);
   const [overlayVisible, setOverlayVisible] = useState(true);
+  const [translationEnabled, setTranslationEnabled] = useState(false);
   const [loadedModel, setLoadedModel] = useState<string | null>(null);
   const [audioDevice, setAudioDevice] = useState<string | null>(null);
   const toast = useToast();
   const toggleCaptureRef = useRef<() => void>(() => {});
   const toggleOverlayRef = useRef<() => void>(() => {});
+  const toggleTranslationRef = useRef<() => void>(() => {});
 
   const toggleCapture = useCallback(async () => {
     try {
@@ -48,6 +45,21 @@ function App() {
     }
   }, [toast]);
 
+  const toggleTranslation = useCallback(async () => {
+    try {
+      const config = await invoke<AppConfig>("get_config");
+      const newEnabled = !config.translation.enabled;
+      await invoke("save_config", {
+        config: { ...config, translation: { ...config.translation, enabled: newEnabled } },
+      });
+      setTranslationEnabled(newEnabled);
+      toast.success(`Translation ${newEnabled ? "enabled" : "disabled"}`);
+    } catch (err) {
+      toast.error("Failed to toggle translation");
+      console.error("Failed to toggle translation:", err);
+    }
+  }, [toast]);
+
   useEffect(() => {
     toggleCaptureRef.current = toggleCapture;
   }, [toggleCapture]);
@@ -55,6 +67,10 @@ function App() {
   useEffect(() => {
     toggleOverlayRef.current = toggleOverlay;
   }, [toggleOverlay]);
+
+  useEffect(() => {
+    toggleTranslationRef.current = toggleTranslation;
+  }, [toggleTranslation]);
 
   useEffect(() => {
     loadModelState();
@@ -66,10 +82,14 @@ function App() {
     const unlistenOverlay = listen("toggle-overlay", () => {
       toggleOverlayRef.current();
     });
+    const unlistenTranslation = listen("toggle-translation", () => {
+      toggleTranslationRef.current();
+    });
 
     return () => {
       unlistenCapture.then((fn) => fn());
       unlistenOverlay.then((fn) => fn());
+      unlistenTranslation.then((fn) => fn());
     };
   }, []);
 
@@ -103,97 +123,19 @@ function App() {
   }, [isCapturing]);
 
   return (
-    <div className="h-screen flex flex-col bg-bg-base">
-      {/* Header */}
-      <header className="flex items-center justify-between px-5 py-3 border-b border-border-subtle bg-bg-raised/80 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
-            <span className="text-accent font-bold text-sm">S</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-text-primary leading-tight">
-              subtitledss
-            </span>
-            <span className="text-[11px] text-text-muted leading-tight">real-time subtitles</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleOverlay}
-            className="btn btn-ghost btn-sm gap-2"
-            title={overlayVisible ? "Hide overlay" : "Show overlay"}
-          >
-            {overlayVisible ? <MonitorPlay size={15} /> : <MonitorOff size={15} />}
-            <span className="hidden sm:inline">Overlay</span>
-          </button>
-
-          <div className="w-px h-5 bg-border-default" />
-
-          <button
-            onClick={toggleCapture}
-            className={`btn btn-sm gap-2 ${
-              isCapturing ? "bg-danger-subtle text-danger" : "btn-primary"
-            }`}
-            title={isCapturing ? "Stop capture (Ctrl+Shift+S)" : "Start capture (Ctrl+Shift+S)"}
-          >
-            <Circle size={8} className={isCapturing ? "fill-danger animate-pulse" : ""} />
-            <span>{isCapturing ? "Stop" : "Start"}</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Tab Navigation */}
-      <nav className="px-5 pt-3 pb-0">
-        <div className="tab-bar">
-          {[
-            { id: "settings" as const, label: "Settings", icon: Settings2 },
-            { id: "history" as const, label: "History", icon: History },
-            { id: "models" as const, label: "Models", icon: Brain },
-          ].map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`tab-item ${activeTab === id ? "active" : ""}`}
-            >
-              <Icon size={15} />
-              {label}
-            </button>
-          ))}
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        {activeTab === "settings" && <SettingsPanel isCapturing={isCapturing} />}
-        {activeTab === "history" && <HistoryList />}
-        {activeTab === "models" && <ModelList />}
-      </main>
-
-      {/* Status Bar */}
-      <footer className="flex items-center justify-between px-5 py-2 border-t border-border-subtle bg-bg-raised/60 text-[11px] text-text-muted">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <div className={`status-dot ${isCapturing ? "active" : "inactive"}`} />
-            <span>{isCapturing ? "Capturing" : "Idle"}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Brain size={12} className="text-text-muted" />
-            <span>{loadedModel ? `Whisper: ${loadedModel}` : "Whisper: not loaded"}</span>
-          </div>
-          {audioDevice && (
-            <div className="flex items-center gap-1.5">
-              <span>•</span>
-              <span>{audioDevice}</span>
-            </div>
-          )}
-        </div>
-        <span>Ctrl+Shift+S</span>
-      </footer>
-
-      {/* Toast Notifications */}
-      <ToastContainer toasts={toast.toasts} onRemove={toast.removeToast} />
-    </div>
+    <>
+      <OnboardingWizard />
+      <AppShell
+        isCapturing={isCapturing}
+        overlayVisible={overlayVisible}
+        translationEnabled={translationEnabled}
+        loadedModel={loadedModel}
+        audioDevice={audioDevice}
+        onToggleCapture={toggleCapture}
+        onToggleOverlay={toggleOverlay}
+        onToggleTranslation={toggleTranslation}
+      />
+    </>
   );
 }
 

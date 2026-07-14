@@ -1,10 +1,13 @@
 use std::sync::{Arc, Mutex, atomic::{AtomicU32, AtomicUsize}};
 use tauri::State;
+use tauri::Emitter;
 use crate::audio::{AudioCapture, RingBuffer};
 use crate::audio::capture::AUDIO_LEVEL;
+use crate::history::HistoryDb;
 use crate::whisper::WhisperEngine;
 use crate::pipeline::TranscriptionPipeline;
 use crate::settings::AppConfig;
+use crate::translation::marian::MarianEngine;
 use tracing::{info, error};
 
 #[tauri::command]
@@ -13,9 +16,11 @@ pub async fn start_capture(
     audio_buffer: State<'_, Arc<Mutex<RingBuffer>>>,
     whisper_engine: State<'_, Arc<Mutex<WhisperEngine>>>,
     pipeline: State<'_, Arc<Mutex<TranscriptionPipeline>>>,
+    history_db: State<'_, Arc<Mutex<HistoryDb>>>,
     config: State<'_, Arc<Mutex<AppConfig>>>,
     actual_sample_rate: State<'_, Arc<AtomicU32>>,
     actual_channels: State<'_, Arc<AtomicUsize>>,
+    marian_engine: State<'_, Arc<Mutex<MarianEngine>>>,
     app_handle: tauri::AppHandle,
 ) -> Result<String, String> {
     info!("Starting capture...");
@@ -77,12 +82,19 @@ pub async fn start_capture(
         pipe.start(
             audio_buffer.inner().clone(),
             whisper_engine.inner().clone(),
-            app_handle,
+            history_db.inner().clone(),
+            app_handle.clone(),
             pipeline_config,
+            marian_engine.inner().clone(),
         );
     }
 
     info!("Capture + pipeline started successfully");
+
+    let _ = app_handle.emit("capture-state-changed", serde_json::json!({
+        "capturing": true,
+    }));
+
     Ok("Capture started".to_string())
 }
 
@@ -90,6 +102,7 @@ pub async fn start_capture(
 pub async fn stop_capture(
     audio_capture: State<'_, Arc<Mutex<AudioCapture>>>,
     pipeline: State<'_, Arc<Mutex<TranscriptionPipeline>>>,
+    app_handle: tauri::AppHandle,
 ) -> Result<String, String> {
     // Stop pipeline first
     {
@@ -105,6 +118,10 @@ pub async fn stop_capture(
 
     // Reset audio level
     AUDIO_LEVEL.store(0, std::sync::atomic::Ordering::Relaxed);
+
+    let _ = app_handle.emit("capture-state-changed", serde_json::json!({
+        "capturing": false,
+    }));
 
     info!("Capture + pipeline stopped");
     Ok("Capture stopped".to_string())

@@ -27,11 +27,17 @@ export interface AppConfig {
     background_color: string;
     auto_hide: boolean;
     auto_hide_delay: number;
+    display_duration_ms: number;
+    fade_duration_ms: number;
+    max_visible_lines: number;
+    line_gap: number;
+    max_line_width: number;
   };
   translation: {
     enabled: boolean;
     source_lang: string;
     target_lang: string;
+    show_original: boolean;
   };
   shortcuts: {
     toggle_capture: string;

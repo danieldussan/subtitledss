@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UI Mockups — subtitledss</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100vh; font-family: 'Inter', -apple-system, sans-serif; font-size: 14px; line-height: 1.5; color: #e8ecf4; background: #0c0f14; }
+  :root {
+    --bg-base: #0c0f14; --bg-raised: #141920; --bg-overlay: #1c2333; --bg-surface: #232c3b; --bg-hover: #2a3445;
+    --border-subtle: #1e2736; --border-default: #2a3445; --border-strong: #3a4658;
+    --text-primary: #e8ecf4; --text-secondary: #8b95a9; --text-muted: #5c6882;
+    --accent: #5b8def; --accent-hover: #4a7de0; --accent-subtle: rgba(91,141,239,0.12); --accent-muted: rgba(91,141,239,0.25);
+    --success: #34d399; --success-subtle: rgba(52,211,153,0.12);
+    --warning: #fbbf24; --warning-subtle: rgba(251,191,36,0.12);
+    --danger: #f87171; --danger-subtle: rgba(248,113,113,0.12);
+  }
+
+  .container { max-width: 800px; margin: 0 auto; padding: 48px 24px; }
+  
+  .header { text-align: center; margin-bottom: 48px; }
+  .logo { width: 48px; height: 48px; border-radius: 12px; background: var(--accent-subtle); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; margin-bottom: 16px; }
+  .title { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .subtitle { font-size: 15px; color: var(--text-secondary); max-width: 500px; margin: 0 auto; }
+
+  .problems { margin-bottom: 48px; }
+  .problems-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .problems-title svg { color: var(--warning); }
+  .problem-list { display: flex; flex-direction: column; gap: 10px; }
+  .problem-item {
+    display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px;
+    background: var(--bg-raised); border: 1px solid var(--border-subtle); border-radius: 10px;
+  }
+  .problem-num { font-size: 12px; font-weight: 700; color: var(--warning); background: var(--warning-subtle); width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .problem-text { font-size: 13px; color: var(--text-secondary); }
+  .problem-text strong { color: var(--text-primary); }
+
+  .solutions-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .solutions-title svg { color: var(--accent); }
+
+  .cards { display: flex; flex-direction: column; gap: 16px; }
+  .card {
+    background: var(--bg-raised); border: 1px solid var(--border-subtle); border-radius: 12px;
+    padding: 24px; transition: all 0.2s; text-decoration: none; color: inherit;
+    display: flex; gap: 20px; align-items: flex-start; position: relative; overflow: hidden;
+  }
+  .card:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(91,141,239,0.1); }
+  .card-num {
+    width: 36px; height: 36px; border-radius: 10px; background: var(--accent-subtle);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-weight: 700; font-size: 16px; color: var(--accent);
+  }
+  .card-content { flex: 1; }
+  .card-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .card-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+  .card-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .card-tag {
+    font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+    background: var(--bg-surface); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .card-tag.high { background: var(--accent-subtle); color: var(--accent); }
+  .card-arrow { color: var(--text-muted); align-self: center; transition: color 0.2s; }
+  .card:hover .card-arrow { color: var(--accent); }
+
+  .footer { margin-top: 48px; text-align: center; font-size: 12px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="logo">S</div>
+    <div class="title">UI Improvement Proposals</div>
+    <div class="subtitle">4 mockups showing concrete changes to modernize the subtitledss interface. Each targets a specific UX problem.</div>
+  </div>
+
+  <div class="problems">
+    <div class="problems-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Current UX Problems
+    </div>
+    <div class="problem-list">
+      <div class="problem-item">
+        <div class="problem-num">1</div>
+        <div class="problem-text"><strong>Nested tab maze.</strong> Settings have 5 sub-tabs inside the Settings tab. Users click 2-3 times to reach what they need.</div>
+      </div>
+      <div class="problem-item">
+        <div class="problem-num">2</div>
+        <div class="problem-text"><strong>No dashboard.</strong> The main screen is just tabs. No at-a-glance view of system status, active models, or live feed.</div>
+      </div>
+      <div class="problem-item">
+        <div class="problem-num">3</div>
+        <div class="problem-text"><strong>No onboarding.</strong> First-time users must figure out the workflow: download model → configure audio → start capture. No guidance.</div>
+      </div>
+      <div class="problem-item">
+        <div class="problem-num">4</div>
+        <div class="problem-text"><strong>Flat layout.</strong> Everything is at the same visual level. No hierarchy, no grouping, no progressive disclosure.</div>
+      </div>
+      <div class="problem-item">
+        <div class="problem-num">5</div>
+        <div class="problem-text"><strong>No micro-interactions.</strong> Buttons, toggles, and cards lack hover/active feedback. UI feels static and unresponsive.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="solutions-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    Proposed Solutions
+  </div>
+
+  <div class="cards">
+    <a class="card" href="dashboard.html">
+      <div class="card-num">1</div>
+      <div class="card-content">
+        <div class="card-title">Dashboard Overview</div>
+        <div class="card-desc">Replace flat tabs with a sidebar + dashboard. At-a-glance status cards, quick actions, live transcription feed, and audio meter — all on one screen.</div>
+        <div class="card-tags">
+          <span class="card-tag high">High Impact</span>
+          <span class="card-tag">Layout</span>
+          <span class="card-tag">Navigation</span>
+        </div>
+      </div>
+      <div class="card-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </a>
+
+    <a class="card" href="settings.html">
+      <div class="card-num">2</div>
+      <div class="card-content">
+        <div class="card-title">Settings Reorganization</div>
+        <div class="card-desc">Flat sections replace nested sub-tabs. Card-based model selection, inline controls, context-aware sub-nav. No more tab hunting.</div>
+        <div class="card-tags">
+          <span class="card-tag high">High Impact</span>
+          <span class="card-tag">Settings</span>
+          <span class="card-tag">Forms</span>
+        </div>
+      </div>
+      <div class="card-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </a>
+
+    <a class="card" href="onboarding.html">
+      <div class="card-num">3</div>
+      <div class="card-content">
+        <div class="card-title">Quick Start Onboarding</div>
+        <div class="card-desc">Guided 4-step wizard for first launch. Choose model, language, translation preferences, and get a summary. Under 60 seconds.</div>
+        <div class="card-tags">
+          <span class="card-tag high">High Impact</span>
+          <span class="card-tag">Onboarding</span>
+          <span class="card-tag">UX</span>
+        </div>
+      </div>
+      <div class="card-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </a>
+
+    <a class="card" href="polish.html">
+      <div class="card-num">4</div>
+      <div class="card-content">
+        <div class="card-title">Micro-Interactions & Polish</div>
+        <div class="card-desc">Hover glow on cards, animated toggles, button ripple effects, toast slide-ins, skeleton loading, focus rings, keyboard badges.</div>
+        <div class="card-tags">
+          <span class="card-tag">Detail</span>
+          <span class="card-tag">Animation</span>
+          <span class="card-tag">Polish</span>
+        </div>
+      </div>
+      <div class="card-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </a>
+  </div>
+
+  <div class="footer">
+    Open each mockup in full width for best experience. Annotations show what's new.
+  </div>
+</div>
+
+</body>
+</html>

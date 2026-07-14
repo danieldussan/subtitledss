@@ -14,6 +14,11 @@ pub struct OverlayConfig {
     pub background_color: String,
     pub auto_hide: bool,
     pub auto_hide_delay: u64,
+    pub display_duration_ms: u64,
+    pub fade_duration_ms: u64,
+    pub max_visible_lines: usize,
+    pub line_gap: u32,
+    pub max_line_width: usize,
 }
 
 impl Default for OverlayConfig {
@@ -31,6 +36,11 @@ impl Default for OverlayConfig {
             background_color: "#00000080".to_string(),
             auto_hide: true,
             auto_hide_delay: 5000,
+            display_duration_ms: 10000,
+            fade_duration_ms: 3000,
+            max_visible_lines: 4,
+            line_gap: 4,
+            max_line_width: 80,
         }
     }
 }

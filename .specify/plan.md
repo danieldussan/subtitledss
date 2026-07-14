@@ -58,6 +58,8 @@ Three-phase roadmap to take subtitledss from current state (~70% functional) to 
 | History grouping by date | Medium | 1h | `src/components/History/HistoryList.tsx` |
 | Draggable overlay | Medium | 2h | `public/overlay.html`, `src-tauri/tauri.conf.json` |
 | NLLB-200 translation | Low | 8h | `src-tauri/src/translation/` |
+| **Whisper translate + LibreTranslate** | **High** | **5h** | `src-tauri/src/translation/`, `pipeline/transcriber.rs` |
+| **Accumulative overlay with fade** | **High** | **4h** | `public/overlay.html`, `tauri.conf.json` |
 | Translation settings UI | Low | 2h | `src/components/Settings/TranslationSettings.tsx` |
 | History search improvements | Low | 2h | `src/components/History/HistoryList.tsx` |
 
@@ -73,9 +75,13 @@ Three-phase roadmap to take subtitledss from current state (~70% functional) to 
 
 ### New Rust Crates (Phase 3)
 ```toml
+# NLLB approach (alternative)
 candle-core = "0.8"
 candle-nn = "0.8"
 tokenizers = "0.21"
+
+# Whisper/LibreTranslate approach (feature 005) — NO NEW DEPS
+# Uses existing: whisper-rs 0.16 (set_translate), reqwest 0.12 (LibreTranslate API)
 ```
 
 ### New npm Packages (Phase 2-3)
@@ -96,6 +102,8 @@ tokenizers = "0.21"
 | Overlay transparent window broken on Hyprland | High | Test early, fallback to CSS-only overlay |
 | Global shortcuts conflict with DE | Medium | Make configurable, provide defaults |
 | SQLite FTS5 performance with 10k+ entries | Low | Add index, paginate |
+| **Whisper translate latency** | **Low** | **Translate is fast (<500ms for short chunks)** |
+| **LibreTranslate service unavailable** | **Medium** | **Graceful fallback to original text, log warning** |
 
 ---
 
@@ -117,5 +125,8 @@ Week 3-4: Phase 3 (Functionality)
   Mon-Wed: Export system
   Thu-Fri: Virtualized history
   Week 3: Overlay drag + history
-  Week 4: NLLB translation (if time)
+  Week 4: Translation (Whisper/LibreTranslate approach)
+    - Feature spec: .specify/features/005-overlay-translation/
+    - Tasks: 39 tasks across 8 phases
+    - Estimated: 3-4 days (Whisper translate + accumulative overlay)
 ```

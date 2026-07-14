@@ -49,6 +49,14 @@ aur/src/
 aur/pkg/
 aur/*.tar.gz
 
+# opencode runtime (keep agents/commands, ignore cache)
+.opencode/cache/
+
 # Misc
 *.swp
 *~
+
+# Design artifacts (not source code)
+.archive/
+.codegraph/
+.opencode/

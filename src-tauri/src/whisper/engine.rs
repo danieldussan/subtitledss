@@ -60,6 +60,7 @@ impl WhisperEngine {
         whisper_params.set_print_realtime(false);
         whisper_params.set_print_timestamps(false);
         whisper_params.set_suppress_blank(true);
+        whisper_params.set_translate(params.translate);
 
         let mut state = context.create_state()?;
 

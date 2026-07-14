@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup 3 — Quick Start Onboarding</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: 'Inter', -apple-system, sans-serif; font-size: 14px; line-height: 1.5; color: #e8ecf4; background: #0c0f14; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  :root {
+    --bg-base: #0c0f14; --bg-raised: #141920; --bg-overlay: #1c2333; --bg-surface: #232c3b; --bg-hover: #2a3445;
+    --border-subtle: #1e2736; --border-default: #2a3445; --border-strong: #3a4658;
+    --text-primary: #e8ecf4; --text-secondary: #8b95a9; --text-muted: #5c6882;
+    --accent: #5b8def; --accent-hover: #4a7de0; --accent-subtle: rgba(91,141,239,0.12); --accent-muted: rgba(91,141,239,0.25);
+    --success: #34d399; --success-subtle: rgba(52,211,153,0.12);
+    --warning: #fbbf24; --warning-subtle: rgba(251,191,36,0.12);
+    --danger: #f87171; --danger-subtle: rgba(248,113,113,0.12);
+  }
+
+  .onboarding {
+    width: 580px; background: var(--bg-raised); border: 1px solid var(--border-subtle);
+    border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  /* Header */
+  .onboarding-header {
+    padding: 32px 40px 24px; text-align: center;
+    background: linear-gradient(180deg, var(--bg-overlay) 0%, var(--bg-raised) 100%);
+  }
+  .onboarding-logo {
+    width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 16px;
+    background: var(--accent-subtle); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 24px;
+    box-shadow: 0 0 0 4px var(--accent-subtle);
+  }
+  .onboarding-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .onboarding-desc { font-size: 13px; color: var(--text-secondary); max-width: 380px; margin: 0 auto; }
+
+  /* Steps */
+  .steps { padding: 24px 40px; }
+  .step-progress {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-bottom: 28px;
+  }
+  .step-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--border-default);
+    transition: all 0.3s;
+  }
+  .step-dot.active { background: var(--accent); width: 24px; border-radius: 4px; }
+  .step-dot.done { background: var(--success); }
+
+  .step {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .step.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .step-number {
+    font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase;
+    letter-spacing: 0.1em; margin-bottom: 8px;
+  }
+  .step-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .step-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; }
+
+  /* Model cards for onboarding */
+  .model-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .model-option {
+    background: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: 10px;
+    padding: 14px; cursor: pointer; transition: all 0.2s; position: relative;
+  }
+  .model-option:hover { border-color: var(--border-strong); }
+  .model-option.selected { border-color: var(--accent); background: var(--accent-subtle); }
+  .model-option.selected::after {
+    content: ''; position: absolute; top: 8px; right: 8px;
+    width: 18px; height: 18px; border-radius: 50%; background: var(--accent);
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: center;
+  }
+  .model-option-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .model-option-size { font-size: 11px; color: var(--text-muted); }
+  .model-option-rec {
+    display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 6px;
+    background: var(--success-subtle); color: var(--success); margin-top: 6px;
+  }
+
+  /* Language selector */
+  .lang-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+  .lang-option {
+    background: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: 8px;
+    padding: 10px; text-align: center; cursor: pointer; transition: all 0.2s; font-size: 13px;
+  }
+  .lang-option:hover { border-color: var(--border-strong); }
+  .lang-option.selected { border-color: var(--accent); background: var(--accent-subtle); color: var(--accent); }
+  .lang-flag { font-size: 20px; margin-bottom: 4px; }
+
+  /* Toggle row */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; background: var(--bg-base); border-radius: 10px; margin-bottom: 8px;
+  }
+  .toggle-label { font-size: 13px; font-weight: 500; }
+  .toggle-desc { font-size: 11px; color: var(--text-muted); }
+  .toggle { position: relative; width: 40px; height: 22px; border-radius: 11px; background: var(--border-default); cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+  .toggle.active { background: var(--accent); }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: white; transition: transform 0.2s; }
+  .toggle.active::after { transform: translateX(18px); }
+
+  /* Ready state */
+  .ready-summary {
+    background: var(--bg-base); border-radius: 10px; padding: 16px; margin-bottom: 20px;
+  }
+  .ready-item {
+    display: flex; align-items: center; gap: 10px; padding: 8px 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .ready-item:last-child { border-bottom: none; }
+  .ready-icon {
+    width: 28px; height: 28px; border-radius: 6px; background: var(--success-subtle);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .ready-icon svg { width: 14px; height: 14px; color: var(--success); }
+  .ready-label { font-size: 12px; color: var(--text-muted); }
+  .ready-value { font-size: 13px; font-weight: 500; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 20px; border-radius: 8px; border: none; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
+  .btn svg { width: 15px; height: 15px; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-ghost { background: transparent; color: var(--text-secondary); }
+  .btn-ghost:hover { color: var(--text-primary); }
+
+  .onboarding-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 40px; border-top: 1px solid var(--border-subtle);
+  }
+
+  .skip-link { font-size: 12px; color: var(--text-muted); cursor: pointer; text-decoration: none; }
+  .skip-link:hover { color: var(--text-secondary); }
+
+  /* Annotations */
+  .annotation { position: fixed; padding: 8px 14px; border-radius: 8px; background: rgba(91,141,239,0.15); border: 1px solid rgba(91,141,239,0.3); color: var(--accent); font-size: 11px; font-weight: 600; pointer-events: none; z-index: 100; white-space: nowrap; }
+  .annotation::before { content: 'NEW'; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; background: var(--accent); color: white; padding: 1px 5px; border-radius: 3px; margin-right: 6px; }
+</style>
+</head>
+<body>
+
+<div class="onboarding">
+  <div class="onboarding-header">
+    <div class="onboarding-logo">S</div>
+    <div class="onboarding-title">Welcome to subtitledss</div>
+    <div class="onboarding-desc">Real-time subtitles powered by AI. Let's get you set up in under a minute.</div>
+  </div>
+
+  <div class="steps">
+    <div class="step-progress">
+      <div class="step-dot done"></div>
+      <div class="step-dot active"></div>
+      <div class="step-dot"></div>
+      <div class="step-dot"></div>
+    </div>
+
+    <!-- Step 1: Choose Model -->
+    <div class="step">
+      <div class="step-number">Step 1 of 4</div>
+      <div class="step-title">Choose your AI model</div>
+      <div class="step-desc">Larger models are more accurate but use more CPU. You can change this later.</div>
+      <div class="model-options">
+        <div class="model-option">
+          <div class="model-option-name">Tiny</div>
+          <div class="model-option-size">39 MB · Fastest</div>
+        </div>
+        <div class="model-option selected">
+          <div class="model-option-name">Base</div>
+          <div class="model-option-size">142 MB · Good balance</div>
+          <div class="model-option-rec">Recommended</div>
+        </div>
+        <div class="model-option">
+          <div class="model-option-name">Small</div>
+          <div class="model-option-size">466 MB · Better accuracy</div>
+        </div>
+        <div class="model-option">
+          <div class="model-option-name">Medium</div>
+          <div class="model-option-size">1.5 GB · High accuracy</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Language (ACTIVE) -->
+    <div class="step active">
+      <div class="step-number">Step 2 of 4</div>
+      <div class="step-title">What language will you hear?</div>
+      <div class="step-desc">Select the primary language for transcription.</div>
+      <div class="lang-grid">
+        <div class="lang-option selected">
+          <div class="lang-flag">🇪🇸</div>
+          Spanish
+        </div>
+        <div class="lang-option">
+          <div class="lang-flag">🇺🇸</div>
+          English
+        </div>
+        <div class="lang-option">
+          <div class="lang-flag">🇧🇷</div>
+          Portuguese
+        </div>
+        <div class="lang-option">
+          <div class="lang-flag">🇫🇷</div>
+          French
+        </div>
+        <div class="lang-option">
+          <div class="lang-flag">🇩🇪</div>
+          German
+        </div>
+        <div class="lang-option">
+          <div class="lang-flag">🇯🇵</div>
+          Japanese
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Translation -->
+    <div class="step">
+      <div class="step-number">Step 3 of 4</div>
+      <div class="step-title">Enable translation?</div>
+      <div class="step-desc">Translate transcriptions in real-time. Runs 100% locally on your machine.</div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Real-time Translation</div>
+          <div class="toggle-desc">Translate speech as it's captured</div>
+        </div>
+        <div class="toggle active"></div>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Show Original Text</div>
+          <div class="toggle-desc">Display source alongside translation</div>
+        </div>
+        <div class="toggle active"></div>
+      </div>
+    </div>
+
+    <!-- Step 4: Ready -->
+    <div class="step">
+      <div class="step-number">Step 4 of 4</div>
+      <div class="step-title">You're all set!</div>
+      <div class="step-desc">Here's your configuration summary.</div>
+      <div class="ready-summary">
+        <div class="ready-item">
+          <div class="ready-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div>
+            <div class="ready-label">Model</div>
+            <div class="ready-value">Whisper Base (142 MB)</div>
+          </div>
+        </div>
+        <div class="ready-item">
+          <div class="ready-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div>
+            <div class="ready-label">Language</div>
+            <div class="ready-value">Spanish</div>
+          </div>
+        </div>
+        <div class="ready-item">
+          <div class="ready-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div>
+            <div class="ready-label">Translation</div>
+            <div class="ready-value">ES → EN · Enabled</div>
+          </div>
+        </div>
+        <div class="ready-item">
+          <div class="ready-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div>
+            <div class="ready-label">Overlay</div>
+            <div class="ready-value">Auto-hide after 3s</div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:13px;color:var(--text-secondary);">
+        Press <kbd style="background:var(--bg-surface);padding:2px 6px;border-radius:4px;font-size:12px;font-family:monospace;">Ctrl+Shift+S</kbd> to start capturing
+      </div>
+    </div>
+  </div>
+
+  <div class="onboarding-footer">
+    <a class="skip-link">Skip setup</a>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost">Back</button>
+      <button class="btn btn-primary">Continue →</button>
+    </div>
+  </div>
+</div>
+
+<div class="annotation" style="top: 30px; left: 50%; transform: translateX(-50%);">Guided 4-step onboarding for first launch</div>
+<div class="annotation" style="bottom: 30px; right: 40px;">Skip option for power users</div>
+
+</body>
+</html>

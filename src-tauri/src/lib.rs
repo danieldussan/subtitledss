@@ -5,12 +5,14 @@ pub mod models;
 pub mod overlay;
 pub mod pipeline;
 pub mod settings;
+pub mod translation;
 pub mod vad;
 pub mod whisper;
 
 use std::sync::{Arc, Mutex, atomic::{AtomicU32, AtomicUsize}};
 use tauri::Manager;
 use tauri::Emitter;
+use tauri::Listener;
 use settings::AppConfig;
 use whisper::WhisperEngine;
 use history::HistoryDb;
@@ -18,6 +20,7 @@ use overlay::{OverlayManager, OverlayConfig};
 use audio::{AudioCapture, RingBuffer};
 use whisper::model::ModelManager;
 use pipeline::TranscriptionPipeline;
+use translation::marian::MarianEngine;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -43,6 +46,11 @@ pub fn run() {
         background_color: config.overlay.background_color.clone(),
         auto_hide: config.overlay.auto_hide,
         auto_hide_delay: config.overlay.auto_hide_delay,
+        display_duration_ms: config.overlay.display_duration_ms,
+        fade_duration_ms: config.overlay.fade_duration_ms,
+        max_visible_lines: config.overlay.max_visible_lines,
+        line_gap: config.overlay.line_gap,
+        max_line_width: config.overlay.max_line_width,
     };
     let overlay_manager = Arc::new(Mutex::new(OverlayManager::new(overlay_config)));
 
@@ -64,13 +72,15 @@ pub fn run() {
         .join("subtitledss")
         .join("models");
 
-    let model_manager = Arc::new(Mutex::new(ModelManager::new(models_dir)));
+    let model_manager = Arc::new(Mutex::new(ModelManager::new(models_dir.clone())));
 
     let audio_capture = Arc::new(Mutex::new(AudioCapture::new()));
     let audio_buffer = Arc::new(Mutex::new(RingBuffer::default()));
     let pipeline = Arc::new(Mutex::new(TranscriptionPipeline::new()));
     let actual_sample_rate = Arc::new(AtomicU32::new(16000));
     let actual_channels = Arc::new(AtomicUsize::new(1));
+
+    let marian_engine = Arc::new(Mutex::new(MarianEngine::new(models_dir.clone())));
 
     let config_arc = Arc::new(Mutex::new(config));
 
@@ -83,6 +93,7 @@ pub fn run() {
         .manage(history_db)
         .manage(config_arc)
         .manage(model_manager)
+        .manage(marian_engine)
         .manage(audio_capture)
         .manage(audio_buffer)
         .manage(pipeline)
@@ -107,6 +118,10 @@ pub fn run() {
             commands::overlay::toggle_overlay,
             commands::overlay::show_overlay,
             commands::overlay::hide_overlay,
+            commands::translation::download_marian_model,
+            commands::translation::check_marian_model,
+            commands::translation::delete_marian_model,
+            commands::translation::list_marian_models,
         ])
         .setup(|app| {
             // Auto-load whisper model if configured
@@ -150,26 +165,20 @@ pub fn run() {
 
             let menu = Menu::with_items(app, &[&start_stop, &show_overlay, &show_window, &quit])?;
 
-            let _tray = TrayIconBuilder::new()
+            let _tray = TrayIconBuilder::with_id("main-tray")
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("subtitledss — Idle")
                 .menu(&menu)
-                .on_menu_event(move |app, event| {
+                .on_menu_event(move |app: &tauri::AppHandle, event: tauri::menu::MenuEvent| {
                     let id = event.id().as_ref();
                     match id {
                         "start_stop" => {
                             tracing::info!("Tray: toggle capture");
-                            // Emit event for frontend to handle capture toggle
                             let _ = app.emit("toggle-capture", ());
                         }
                         "show_overlay" => {
-                            if let Some(overlay) = app.get_webview_window("overlay") {
-                                if overlay.is_visible().unwrap_or(false) {
-                                    let _ = overlay.hide();
-                                } else {
-                                    let _ = overlay.show();
-                                }
-                            }
+                            tracing::info!("Tray: toggle overlay");
+                            let _ = app.emit("toggle-overlay", ());
                         }
                         "show_window" => {
                             if let Some(main) = app.get_webview_window("main") {
@@ -183,7 +192,7 @@ pub fn run() {
                         _ => {}
                     }
                 })
-                .on_tray_icon_event(|tray, event| {
+                .on_tray_icon_event(|tray: &tauri::tray::TrayIcon, event: tauri::tray::TrayIconEvent| {
                     if let TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, button_state: tauri::tray::MouseButtonState::Up, .. } = event {
                         let app = tray.app_handle();
                         if let Some(main) = app.get_webview_window("main") {
@@ -193,6 +202,49 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+
+            // Sync tray menu with app state
+            let app_handle_for_sync = app.handle().clone();
+            app.listen("capture-state-changed", move |event| {
+                let capturing = event.payload()
+                    .trim_matches('"')
+                    == "true" || event.payload().contains("\"capturing\":true");
+
+                let label = if capturing { "Stop Capture" } else { "Start Capture" };
+                let tooltip = if capturing { "subtitledss — Capturing" } else { "subtitledss — Idle" };
+
+                if let Some(tray) = app_handle_for_sync.tray_by_id("main-tray") {
+                    if let Ok(new_menu) = Menu::with_items(&app_handle_for_sync, &[
+                        &MenuItem::with_id(&app_handle_for_sync, "start_stop", label, true, None::<&str>).unwrap(),
+                        &MenuItem::with_id(&app_handle_for_sync, "show_overlay", "Show Overlay", true, None::<&str>).unwrap(),
+                        &MenuItem::with_id(&app_handle_for_sync, "show_window", "Show Window", true, None::<&str>).unwrap(),
+                        &MenuItem::with_id(&app_handle_for_sync, "quit", "Quit", true, None::<&str>).unwrap(),
+                    ]) {
+                        let _ = tray.set_menu(Some(new_menu));
+                    }
+                    let _ = tray.set_tooltip(Some(tooltip));
+                }
+            });
+
+            let app_handle_for_overlay = app.handle().clone();
+            app.listen("overlay-state-changed", move |event| {
+                let visible = event.payload()
+                    .trim_matches('"')
+                    == "true" || event.payload().contains("\"visible\":true");
+
+                let label = if visible { "Hide Overlay" } else { "Show Overlay" };
+
+                if let Some(tray) = app_handle_for_overlay.tray_by_id("main-tray") {
+                    if let Ok(new_menu) = Menu::with_items(&app_handle_for_overlay, &[
+                        &MenuItem::with_id(&app_handle_for_overlay, "start_stop", "Start Capture", true, None::<&str>).unwrap(),
+                        &MenuItem::with_id(&app_handle_for_overlay, "show_overlay", label, true, None::<&str>).unwrap(),
+                        &MenuItem::with_id(&app_handle_for_overlay, "show_window", "Show Window", true, None::<&str>).unwrap(),
+                        &MenuItem::with_id(&app_handle_for_overlay, "quit", "Quit", true, None::<&str>).unwrap(),
+                    ]) {
+                        let _ = tray.set_menu(Some(new_menu));
+                    }
+                }
+            });
 
             // Global shortcuts
             use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -210,6 +262,14 @@ pub fn run() {
                 if event.state == ShortcutState::Pressed {
                     tracing::info!("Global shortcut: toggle overlay");
                     let _ = app.emit("toggle-overlay", ());
+                }
+            })?;
+
+            let ctrl_shift_t = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyT);
+            app.global_shortcut().on_shortcut(ctrl_shift_t, move |app, _shortcut, event| {
+                if event.state == ShortcutState::Pressed {
+                    tracing::info!("Global shortcut: toggle translation");
+                    let _ = app.emit("toggle-translation", ());
                 }
             })?;
 

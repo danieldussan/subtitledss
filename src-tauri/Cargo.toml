@@ -1,6 +1,6 @@
 [package]
 name = "subtitledss"
-version = "0.1.0"
+version = "1.0.0"
 description = "Real-time subtitle overlay for Linux"
 authors = ["Daniel Dussan"]
 edition = "2021"
@@ -30,11 +30,17 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1"
 thiserror = "1"
 dirs = "5"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "blocking"] }
 sha2 = "0.10"
 hex = "0.4"
 toml = "0.8"
 chrono = "0.4"
+hf-hub = { version = "1.0.0", features = ["blocking"] }
+candle-core = "0.11.0"
+candle-transformers = "0.11.0"
+candle-nn = "0.11.0"
+tokenizers = "0.23"
+safetensors = "0.5"
 
 [features]
 default = ["custom-protocol"]
