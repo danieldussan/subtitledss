@@ -33,7 +33,10 @@ export function StatusHeroCard({
         <span className="text-[12px] font-medium text-text-muted uppercase tracking-wide">
           {title}
         </span>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cfg.text}`} style={{ background: "var(--color-accent-subtle)" }}>
+        <div
+          className={`w-8 h-8 rounded-lg flex items-center justify-center ${cfg.text}`}
+          style={{ background: "var(--color-accent-subtle)" }}
+        >
           <Icon size={16} />
         </div>
       </div>

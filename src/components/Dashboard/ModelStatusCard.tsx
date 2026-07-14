@@ -19,7 +19,9 @@ export function ModelStatusCard({ loadedModel, onNavigate }: ModelStatusCardProp
               <Brain size={16} className="text-text-muted" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-medium text-text-primary truncate">{loadedModel}</div>
+              <div className="text-[13px] font-medium text-text-primary truncate">
+                {loadedModel}
+              </div>
               <div className="text-[11px] text-text-muted">Whisper</div>
             </div>
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-success-subtle text-success">

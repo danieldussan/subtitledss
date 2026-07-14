@@ -58,8 +58,17 @@ export function StepTranslationSetup({
               </option>
             ))}
           </select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" className="text-text-muted shrink-0">
-            <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            width="16"
+            height="16"
+            className="text-text-muted shrink-0"
+          >
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
           </svg>
           <select
             value={targetLang}
@@ -75,9 +84,7 @@ export function StepTranslationSetup({
         </div>
       )}
 
-      <div className="text-center text-xs text-text-muted">
-        Runs 100% locally on your machine
-      </div>
+      <div className="text-center text-xs text-text-muted">Runs 100% locally on your machine</div>
     </div>
   );
 }

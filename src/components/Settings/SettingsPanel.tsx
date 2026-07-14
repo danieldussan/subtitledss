@@ -26,11 +26,5 @@ export function SettingsPanel({ isCapturing }: SettingsPanelProps) {
     );
   }
 
-  return (
-    <SettingsLayout
-      config={config}
-      onSave={saveConfig}
-      isCapturing={isCapturing}
-    />
-  );
+  return <SettingsLayout config={config} onSave={saveConfig} isCapturing={isCapturing} />;
 }

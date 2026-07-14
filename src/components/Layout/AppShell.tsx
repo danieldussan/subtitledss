@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  MonitorPlay,
-  MonitorOff,
-  Circle,
-  Languages,
-  Brain,
-} from "lucide-react";
+import { MonitorPlay, MonitorOff, Circle, Languages, Brain } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { SectionRouter } from "./SectionRouter";
 import { ToastContainer } from "../ui/Toast";
@@ -43,9 +37,7 @@ export function AppShell({
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="flex items-center justify-between px-5 py-3 border-b border-border-subtle bg-bg-raised/80 backdrop-blur-sm">
-          <div className="text-sm font-semibold text-text-primary capitalize">
-            {activeSection}
-          </div>
+          <div className="text-sm font-semibold text-text-primary capitalize">{activeSection}</div>
 
           <div className="flex items-center gap-2">
             <button

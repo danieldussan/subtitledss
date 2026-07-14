@@ -31,14 +31,23 @@ export function StepModelSelection({ selectedModel, onSelect }: StepModelSelecti
         >
           {selectedModel === model.value && (
             <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="3"
+              >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
           )}
           <div className="text-[14px] font-semibold mb-1 text-text-primary">{model.label}</div>
           <div className="text-xs text-text-muted mb-2.5">{model.size}</div>
-          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${tierConfig[model.tier].className}`}>
+          <span
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${tierConfig[model.tier].className}`}
+          >
             {tierConfig[model.tier].label}
           </span>
           {model.recommended && (

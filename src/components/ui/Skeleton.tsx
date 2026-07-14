@@ -13,9 +13,6 @@ const variantClasses = {
 
 export function Skeleton({ width, height, variant = "text", className = "" }: SkeletonProps) {
   return (
-    <div
-      className={`skeleton ${variantClasses[variant]} ${className}`}
-      style={{ width, height }}
-    />
+    <div className={`skeleton ${variantClasses[variant]} ${className}`} style={{ width, height }} />
   );
 }

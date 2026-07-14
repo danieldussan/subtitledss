@@ -66,10 +66,7 @@ export function Dashboard({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <LiveTranscriptionPanel
-          isCapturing={isCapturing}
-          overlayVisible={overlayVisible}
-        />
+        <LiveTranscriptionPanel isCapturing={isCapturing} overlayVisible={overlayVisible} />
         <div className="flex flex-col gap-4">
           <AudioMeterCard isCapturing={isCapturing} />
           <ModelStatusCard loadedModel={loadedModel} onNavigate={onNavigate} />

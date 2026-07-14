@@ -195,9 +195,7 @@ export function TranslationSettings({ config, onSave }: TranslationSettingsProps
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <span className="text-[13px] font-medium text-text-primary">
-                      {pair.label}
-                    </span>
+                    <span className="text-[13px] font-medium text-text-primary">{pair.label}</span>
                     <p className="text-[11px] text-text-muted">
                       {isDownloaded ? "~300 MB" : "Not downloaded"}
                     </p>

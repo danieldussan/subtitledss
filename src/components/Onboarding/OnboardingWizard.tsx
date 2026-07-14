@@ -8,16 +8,8 @@ import { StepReadySummary } from "./steps/StepReadySummary";
 const TOTAL_STEPS = 4;
 
 export function OnboardingWizard() {
-  const {
-    shouldShow,
-    loading,
-    currentStep,
-    selections,
-    setStep,
-    updateSelection,
-    complete,
-    skip,
-  } = useOnboarding();
+  const { shouldShow, loading, currentStep, selections, setStep, updateSelection, complete, skip } =
+    useOnboarding();
 
   if (loading || !shouldShow) return null;
 
@@ -76,7 +68,9 @@ export function OnboardingWizard() {
             <div className="text-[11px] font-bold text-accent uppercase tracking-widest mb-1.5">
               Step {currentStep + 1} of {TOTAL_STEPS}
             </div>
-            <h2 className="text-[17px] font-semibold text-text-primary mb-1">{stepTitles[currentStep]}</h2>
+            <h2 className="text-[17px] font-semibold text-text-primary mb-1">
+              {stepTitles[currentStep]}
+            </h2>
             <p className="text-[13px] text-text-secondary">{stepDescs[currentStep]}</p>
           </div>
 
@@ -109,10 +103,7 @@ export function OnboardingWizard() {
         </div>
 
         <div className="flex items-center justify-between px-8 py-4 border-t border-border-subtle">
-          <button
-            onClick={skip}
-            className="text-[12px] text-text-muted"
-          >
+          <button onClick={skip} className="text-[12px] text-text-muted">
             Skip setup
           </button>
           <div className="flex gap-2.5">
@@ -121,11 +112,7 @@ export function OnboardingWizard() {
                 Back
               </button>
             )}
-            <button
-              onClick={handleNext}
-              disabled={!canNext()}
-              className="btn btn-primary btn-sm"
-            >
+            <button onClick={handleNext} disabled={!canNext()} className="btn btn-primary btn-sm">
               {currentStep === TOTAL_STEPS - 1 ? "Get Started" : "Continue →"}
             </button>
           </div>

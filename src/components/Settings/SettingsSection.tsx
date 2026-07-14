@@ -24,9 +24,7 @@ export function SettingsSection({
       >
         <div>
           <div className="text-[15px] font-semibold text-text-primary">{title}</div>
-          {description && (
-            <div className="text-xs text-text-muted mt-0.5">{description}</div>
-          )}
+          {description && <div className="text-xs text-text-muted mt-0.5">{description}</div>}
         </div>
         <ChevronDown
           size={16}

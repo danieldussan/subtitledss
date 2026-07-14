@@ -77,9 +77,15 @@ export function LiveTranscriptionPanel({
               <div className="w-10 h-10 rounded-xl bg-accent-subtle inline-flex items-center justify-center mb-2.5">
                 <MonitorPlay size={20} className="text-accent" />
               </div>
-              <div className="text-[13px] font-medium text-text-primary mb-1">Overlay is active</div>
-              <div className="text-[12px] text-text-muted">Subtitles are displayed on screen via the overlay window.</div>
-              <div className="text-[11px] text-text-muted mt-2">Disable overlay to view transcriptions here.</div>
+              <div className="text-[13px] font-medium text-text-primary mb-1">
+                Overlay is active
+              </div>
+              <div className="text-[12px] text-text-muted">
+                Subtitles are displayed on screen via the overlay window.
+              </div>
+              <div className="text-[11px] text-text-muted mt-2">
+                Disable overlay to view transcriptions here.
+              </div>
             </div>
           </div>
         ) : isCapturing && lines.length === 0 ? (

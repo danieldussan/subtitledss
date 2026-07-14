@@ -40,14 +40,23 @@ export function ModelPicker({ selectedModel, onSelect }: ModelPickerProps) {
         >
           {selectedModel === model.value && (
             <div className="absolute top-2.5 right-2.5 w-4 h-4 rounded-full bg-accent flex items-center justify-center">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="3"
+              >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
           )}
           <div className="text-[13px] font-semibold mb-0.5 text-text-primary">{model.label}</div>
           <div className="text-[11px] text-text-muted mb-2">{model.size}</div>
-          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${tierConfig[model.tier].className}`}>
+          <span
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${tierConfig[model.tier].className}`}
+          >
             {tierConfig[model.tier].label}
           </span>
           {model.recommended && (
