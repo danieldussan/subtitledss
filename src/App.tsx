@@ -85,18 +85,22 @@ function App() {
     const unlistenTranslation = listen("toggle-translation", () => {
       toggleTranslationRef.current();
     });
+    const unlistenModelChanged = listen<{ model: string }>("model-changed", (event) => {
+      setLoadedModel(event.payload.model);
+    });
 
     return () => {
       unlistenCapture.then((fn) => fn());
       unlistenOverlay.then((fn) => fn());
       unlistenTranslation.then((fn) => fn());
+      unlistenModelChanged.then((fn) => fn());
     };
   }, []);
 
   const loadModelState = async () => {
     try {
-      const config = await invoke<{ whisper: { model: string } }>("get_config");
-      setLoadedModel(config.whisper.model);
+      const model = await invoke<string | null>("get_loaded_model");
+      setLoadedModel(model);
     } catch (err) {
       console.error("Failed to load model state:", err);
     }

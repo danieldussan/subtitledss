@@ -156,6 +156,8 @@ pub fn run() {
             commands::models::delete_model,
             commands::models::list_downloaded_models,
             commands::models::load_model,
+            commands::models::switch_model,
+            commands::models::get_loaded_model,
             commands::export::export_history,
             commands::overlay::toggle_overlay,
             commands::overlay::show_overlay,

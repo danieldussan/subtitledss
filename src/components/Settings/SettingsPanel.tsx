@@ -4,9 +4,10 @@ import { Loader2 } from "lucide-react";
 
 interface SettingsPanelProps {
   isCapturing: boolean;
+  loadedModel: string | null;
 }
 
-export function SettingsPanel({ isCapturing }: SettingsPanelProps) {
+export function SettingsPanel({ isCapturing, loadedModel }: SettingsPanelProps) {
   const { config, loading, error, saveConfig } = useSettings();
 
   if (loading) {
@@ -26,5 +27,12 @@ export function SettingsPanel({ isCapturing }: SettingsPanelProps) {
     );
   }
 
-  return <SettingsLayout config={config} onSave={saveConfig} isCapturing={isCapturing} />;
+  return (
+    <SettingsLayout
+      config={config}
+      onSave={saveConfig}
+      isCapturing={isCapturing}
+      loadedModel={loadedModel}
+    />
+  );
 }

@@ -58,7 +58,7 @@ export function SectionRouter({
     case "audio":
       return <AudioPage />;
     case "settings":
-      return <SettingsPanel isCapturing={isCapturing} />;
+      return <SettingsPanel isCapturing={isCapturing} loadedModel={loadedModel} />;
     case "overlay":
       return <OverlayPage />;
     case "shortcuts":

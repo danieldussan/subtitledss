@@ -1,32 +1,44 @@
 import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { AppConfig } from "../../hooks/useSettings";
-import { Check, Zap } from "lucide-react";
+import { Check, Zap, Loader2 } from "lucide-react";
 
 interface WhisperSettingsProps {
   config: AppConfig;
   onSave: (config: AppConfig) => Promise<void>;
+  loadedModel: string | null;
 }
 
-export function WhisperSettings({ config, onSave }: WhisperSettingsProps) {
+export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettingsProps) {
   const [model, setModel] = useState(config.whisper.model);
   const [language, setLanguage] = useState(config.whisper.language);
   const [threads, setThreads] = useState(config.whisper.threads);
   const [gpu, setGpu] = useState(config.whisper.gpu);
   const [saved, setSaved] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async () => {
     try {
+      setSwitching(true);
+      setError(null);
+
       await onSave({
         ...config,
         whisper: { ...config.whisper, model, language, threads, gpu },
       });
+
+      if (model !== config.whisper.model) {
+        await invoke("switch_model", { modelName: model });
+      }
+
       setSaved(true);
-      setError(null);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
       const msg = typeof err === "string" ? err : "Failed to save whisper settings";
       setError(msg);
+    } finally {
+      setSwitching(false);
     }
   };
 
@@ -69,32 +81,40 @@ export function WhisperSettings({ config, onSave }: WhisperSettingsProps) {
         )}
 
         <div className="space-y-2">
-          {models.map((m) => (
-            <button
-              key={m.value}
-              onClick={() => setModel(m.value)}
-              className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
-                model === m.value
-                  ? "bg-accent-subtle border border-accent/30"
-                  : "bg-bg-base border border-border-subtle hover:border-border-default"
-              }`}
-            >
-              <div
-                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                  model === m.value ? "border-accent" : "border-border-strong"
+          {models.map((m) => {
+            const isLoaded = loadedModel === m.value;
+            return (
+              <button
+                key={m.value}
+                onClick={() => setModel(m.value)}
+                className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
+                  model === m.value
+                    ? "bg-accent-subtle border border-accent/30"
+                    : "bg-bg-base border border-border-subtle hover:border-border-default"
                 }`}
               >
-                {model === m.value && <div className="w-2 h-2 rounded-full bg-accent" />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-medium text-text-primary">{m.label}</span>
-                  <span className="text-[11px] text-text-muted font-mono">{m.size}</span>
+                <div
+                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                    model === m.value ? "border-accent" : "border-border-strong"
+                  }`}
+                >
+                  {model === m.value && <div className="w-2 h-2 rounded-full bg-accent" />}
                 </div>
-                <span className="text-[12px] text-text-secondary">{m.desc}</span>
-              </div>
-            </button>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-medium text-text-primary">{m.label}</span>
+                    <span className="text-[11px] text-text-muted font-mono">{m.size}</span>
+                    {isLoaded && (
+                      <span className="text-[10px] font-medium uppercase text-success bg-success-subtle px-1.5 py-0.5 rounded">
+                        Loaded
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[12px] text-text-secondary">{m.desc}</span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -152,9 +172,13 @@ export function WhisperSettings({ config, onSave }: WhisperSettingsProps) {
 
       {/* Save */}
       <div className="section flex justify-end">
-        <button onClick={handleSave} className="btn btn-primary btn-sm gap-2">
-          {saved ? <Check size={14} /> : null}
-          {saved ? "Saved" : "Save"}
+        <button onClick={handleSave} disabled={switching} className="btn btn-primary btn-sm gap-2">
+          {switching ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : saved ? (
+            <Check size={14} />
+          ) : null}
+          {switching ? "Loading model..." : saved ? "Saved" : "Save"}
         </button>
       </div>
     </div>

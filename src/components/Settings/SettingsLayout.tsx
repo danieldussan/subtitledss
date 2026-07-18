@@ -13,9 +13,10 @@ interface SettingsLayoutProps {
   config: AppConfig;
   onSave: (config: AppConfig) => Promise<void>;
   isCapturing: boolean;
+  loadedModel: string | null;
 }
 
-export function SettingsLayout({ config, onSave, isCapturing }: SettingsLayoutProps) {
+export function SettingsLayout({ config, onSave, isCapturing, loadedModel }: SettingsLayoutProps) {
   const [filter, setFilter] = useState<SettingsFilter>("general");
 
   const filters: { id: SettingsFilter; label: string }[] = [
@@ -45,7 +46,7 @@ export function SettingsLayout({ config, onSave, isCapturing }: SettingsLayoutPr
           {filter === "general" && (
             <div>
               <AudioSettings config={config} onSave={onSave} isCapturing={isCapturing} />
-              <WhisperSettings config={config} onSave={onSave} />
+              <WhisperSettings config={config} onSave={onSave} loadedModel={loadedModel} />
               <TranslationSettings config={config} onSave={onSave} />
               <AiSettings config={config} onSave={onSave} />
             </div>

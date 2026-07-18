@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { Download, Trash2, Check, Loader2, HardDrive, Zap, Gauge, Play } from "lucide-react";
 
 interface ModelInfo {
@@ -10,7 +11,11 @@ interface ModelInfo {
   sha256: string;
 }
 
-export function ModelList() {
+interface ModelListProps {
+  onModelSwitched?: (modelName: string) => void;
+}
+
+export function ModelList({ onModelSwitched }: ModelListProps) {
   const [models] = useState<ModelInfo[]>([
     { name: "tiny", filename: "ggml-tiny.bin", url: "", size_mb: 39, sha256: "" },
     { name: "base", filename: "ggml-base.bin", url: "", size_mb: 142, sha256: "" },
@@ -27,7 +32,26 @@ export function ModelList() {
 
   useEffect(() => {
     checkDownloadedModels();
+    fetchLoadedModel();
+
+    const unlisten = listen<{ model: string }>("model-changed", (event) => {
+      setLoadedModel(event.payload.model);
+      onModelSwitched?.(event.payload.model);
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
   }, []);
+
+  const fetchLoadedModel = async () => {
+    try {
+      const model = await invoke<string | null>("get_loaded_model");
+      setLoadedModel(model);
+    } catch (err) {
+      console.error("Failed to fetch loaded model:", err);
+    }
+  };
 
   const checkDownloadedModels = async () => {
     try {
@@ -75,8 +99,7 @@ export function ModelList() {
     try {
       setLoading(modelName);
       setError(null);
-      await invoke("load_model", { modelName });
-      setLoadedModel(modelName);
+      await invoke("switch_model", { modelName });
     } catch (err) {
       const msg = typeof err === "string" ? err : "Failed to load model";
       setError(msg);

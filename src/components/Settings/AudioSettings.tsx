@@ -28,7 +28,9 @@ export function AudioSettings({ config, onSave, isCapturing }: AudioSettingsProp
 
   useEffect(() => {
     loadDevices();
-    invoke<string>("get_platform").then(setPlatform).catch(() => {});
+    invoke<string>("get_platform")
+      .then(setPlatform)
+      .catch(() => {});
   }, []);
 
   const loadDevices = async () => {
@@ -116,8 +118,7 @@ export function AudioSettings({ config, onSave, isCapturing }: AudioSettingsProp
             <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-3 text-[12px]">
               <p className="text-yellow-400 font-medium">macOS System Audio</p>
               <p className="text-text-secondary mt-1">
-                macOS requires a virtual audio driver to capture system audio.
-                Install{" "}
+                macOS requires a virtual audio driver to capture system audio. Install{" "}
                 <a
                   href="https://github.com/ExistentialAudio/BlackHole"
                   target="_blank"
