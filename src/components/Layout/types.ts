@@ -6,12 +6,14 @@ import {
   Settings2,
   MonitorPlay,
   Keyboard,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 
 export type Section =
   | "dashboard"
   | "transcriptions"
+  | "video"
   | "export"
   | "audio"
   | "settings"
@@ -28,6 +30,7 @@ export interface NavItem {
 export const SECTION_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, group: "main" },
   { id: "transcriptions", label: "Transcriptions", icon: MessageSquareText, group: "main" },
+  { id: "video", label: "Video", icon: Video, group: "main" },
   { id: "export", label: "Export", icon: Download, group: "main" },
   { id: "audio", label: "Audio", icon: Mic, group: "configure" },
   { id: "overlay", label: "Overlay", icon: MonitorPlay, group: "configure" },

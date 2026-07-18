@@ -29,8 +29,7 @@ export function useOnboarding() {
   const checkOnboardingStatus = async () => {
     try {
       const config = await invoke<AppConfig>("get_config");
-      const completed = (config as unknown as Record<string, unknown>).onboarding_completed;
-      setShouldShow(!completed);
+      setShouldShow(!config.onboarding_completed);
     } catch (err) {
       console.error("Failed to check onboarding status:", err);
       setShouldShow(true);

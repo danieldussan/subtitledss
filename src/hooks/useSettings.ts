@@ -45,6 +45,13 @@ export interface AppConfig {
     toggle_translation: string;
     clear_history: string;
   };
+  ai: {
+    provider: string;
+    base_url: string;
+    api_key: string | null;
+    model: string;
+  };
+  onboarding_completed: boolean;
 }
 
 export function useSettings() {

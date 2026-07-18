@@ -120,6 +120,169 @@ impl HistoryDb {
         info!("History cleared");
         Ok(())
     }
+
+    // ── Video Transcriptions ──────────────────────────────────────
+
+    pub fn init_video_transcriptions_table(&self) -> anyhow::Result<()> {
+        self.conn.execute_batch(
+            "
+            CREATE TABLE IF NOT EXISTS video_transcriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                video_path TEXT NOT NULL,
+                video_name TEXT NOT NULL,
+                duration_seconds REAL,
+                language TEXT NOT NULL,
+                full_text TEXT NOT NULL,
+                translated_text TEXT,
+                target_language TEXT,
+                summary TEXT,
+                segments TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE VIRTUAL TABLE IF NOT EXISTS video_fts USING fts5(
+                full_text,
+                summary,
+                content=video_transcriptions,
+                content_rowid=id
+            );
+
+            CREATE TRIGGER IF NOT EXISTS video_transcriptions_ai AFTER INSERT ON video_transcriptions BEGIN
+                INSERT INTO video_fts(rowid, full_text, summary)
+                VALUES (new.id, new.full_text, new.summary);
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS video_transcriptions_ad AFTER DELETE ON video_transcriptions BEGIN
+                INSERT INTO video_fts(video_fts, rowid, full_text, summary)
+                VALUES ('delete', old.id, old.full_text, old.summary);
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS video_transcriptions_au AFTER UPDATE ON video_transcriptions BEGIN
+                INSERT INTO video_fts(video_fts, rowid, full_text, summary)
+                VALUES ('delete', old.id, old.full_text, old.summary);
+                INSERT INTO video_fts(rowid, full_text, summary)
+                VALUES (new.id, new.full_text, new.summary);
+            END;
+            "
+        )?;
+
+        // Add columns if they don't exist (for existing databases)
+        let columns: Vec<String> = {
+            let mut stmt = self.conn.prepare("PRAGMA table_info(video_transcriptions)")?;
+            let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
+            rows.filter_map(|r| r.ok()).collect()
+        };
+
+        if !columns.contains(&"translated_text".to_string()) {
+            self.conn.execute_batch("ALTER TABLE video_transcriptions ADD COLUMN translated_text TEXT")?;
+        }
+        if !columns.contains(&"target_language".to_string()) {
+            self.conn.execute_batch("ALTER TABLE video_transcriptions ADD COLUMN target_language TEXT")?;
+        }
+
+        info!("Video transcriptions table initialized");
+        Ok(())
+    }
+
+    pub fn insert_video_transcription(
+        &self,
+        video_path: &str,
+        video_name: &str,
+        duration_seconds: f64,
+        language: &str,
+        full_text: &str,
+        translated_text: Option<&str>,
+        target_language: Option<&str>,
+        segments: &str,
+    ) -> anyhow::Result<i64> {
+        let timestamp = chrono::Utc::now().to_rfc3339();
+
+        self.conn.execute(
+            "INSERT INTO video_transcriptions (video_path, video_name, duration_seconds, language, full_text, translated_text, target_language, segments, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![video_path, video_name, duration_seconds, language, full_text, translated_text, target_language, segments, timestamp],
+        )?;
+
+        let id = self.conn.last_insert_rowid();
+        info!("Inserted video transcription with id: {}", id);
+        Ok(id)
+    }
+
+    pub fn get_video_transcriptions(&self, limit: i64) -> anyhow::Result<Vec<crate::commands::video_transcription::VideoTranscriptionEntry>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, video_path, video_name, duration_seconds, language, full_text, translated_text, target_language, summary, segments, created_at
+             FROM video_transcriptions ORDER BY id DESC LIMIT ?1",
+        )?;
+
+        let entries = stmt
+            .query_map(params![limit], |row| {
+                let segments_str: String = row.get(9)?;
+                let segments: Vec<crate::commands::video_transcription::DiarizedSegment> =
+                    serde_json::from_str(&segments_str).unwrap_or_default();
+
+                Ok(crate::commands::video_transcription::VideoTranscriptionEntry {
+                    id: row.get(0)?,
+                    video_path: row.get(1)?,
+                    video_name: row.get(2)?,
+                    duration_seconds: row.get(3)?,
+                    language: row.get(4)?,
+                    full_text: row.get(5)?,
+                    translated_text: row.get(6)?,
+                    target_language: row.get(7)?,
+                    summary: row.get(8)?,
+                    segments,
+                    created_at: row.get(10)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(entries)
+    }
+
+    pub fn get_video_transcription(&self, id: i64) -> anyhow::Result<crate::commands::video_transcription::VideoTranscriptionEntry> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, video_path, video_name, duration_seconds, language, full_text, translated_text, target_language, summary, segments, created_at
+             FROM video_transcriptions WHERE id = ?1",
+        )?;
+
+        let entry = stmt.query_row(params![id], |row| {
+            let segments_str: String = row.get(9)?;
+            let segments: Vec<crate::commands::video_transcription::DiarizedSegment> =
+                serde_json::from_str(&segments_str).unwrap_or_default();
+
+            Ok(crate::commands::video_transcription::VideoTranscriptionEntry {
+                id: row.get(0)?,
+                video_path: row.get(1)?,
+                video_name: row.get(2)?,
+                duration_seconds: row.get(3)?,
+                language: row.get(4)?,
+                full_text: row.get(5)?,
+                translated_text: row.get(6)?,
+                target_language: row.get(7)?,
+                summary: row.get(8)?,
+                segments,
+                created_at: row.get(10)?,
+            })
+        })?;
+
+        Ok(entry)
+    }
+
+    pub fn delete_video_transcription(&self, id: i64) -> anyhow::Result<()> {
+        self.conn
+            .execute("DELETE FROM video_transcriptions WHERE id = ?1", params![id])?;
+        info!("Deleted video transcription with id: {}", id);
+        Ok(())
+    }
+
+    pub fn update_video_transcription_summary(&self, id: i64, summary: &str) -> anyhow::Result<()> {
+        self.conn.execute(
+            "UPDATE video_transcriptions SET summary = ?1 WHERE id = ?2",
+            params![summary, id],
+        )?;
+        info!("Updated summary for video transcription id: {}", id);
+        Ok(())
+    }
 }
 
 #[cfg(test)]

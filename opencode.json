@@ -1,0 +1,42 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "agent": {
+    "speckit-specify": {
+      "description": "Create or update the feature specification from a natural language description.",
+      "mode": "subagent"
+    },
+    "speckit-plan": {
+      "description": "Execute the implementation planning workflow to generate design artifacts.",
+      "mode": "subagent"
+    },
+    "speckit-tasks": {
+      "description": "Generate an actionable, dependency-ordered tasks.md for the feature.",
+      "mode": "subagent"
+    },
+    "speckit-implement": {
+      "description": "Execute the implementation plan by processing and executing all tasks.",
+      "mode": "subagent"
+    },
+    "speckit-clarify": {
+      "description": "Identify underspecified areas in the spec and ask clarification questions.",
+      "mode": "subagent"
+    },
+    "speckit-checklist": {
+      "description": "Generate a custom checklist for the current feature based on requirements quality.",
+      "mode": "subagent"
+    },
+    "speckit-analyze": {
+      "description": "Perform cross-artifact consistency and quality analysis across spec, plan, and tasks.",
+      "mode": "subagent"
+    },
+    "speckit-converge": {
+      "description": "Assess codebase against spec/plan/tasks and append remaining work as new tasks.",
+      "mode": "subagent"
+    },
+    "speckit-constitution": {
+      "description": "Create or update the project constitution from interactive or provided inputs.",
+      "mode": "subagent"
+    }
+  }
+}

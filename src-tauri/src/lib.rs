@@ -8,6 +8,9 @@ pub mod settings;
 pub mod translation;
 pub mod vad;
 pub mod whisper;
+pub mod video;
+pub mod ai;
+pub mod diarization;
 
 use std::sync::{Arc, Mutex, atomic::{AtomicU32, AtomicUsize}};
 use tauri::Manager;
@@ -21,6 +24,8 @@ use audio::{AudioCapture, RingBuffer};
 use whisper::model::ModelManager;
 use pipeline::TranscriptionPipeline;
 use translation::marian::MarianEngine;
+use commands::video_transcription::VideoTranscriptionState;
+use diarization::engine::DiarizationEngine;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -82,6 +87,28 @@ pub fn run() {
 
     let marian_engine = Arc::new(Mutex::new(MarianEngine::new(models_dir.clone())));
 
+    // Initialize video transcription state
+    let diarization_engine = Arc::new(Mutex::new(DiarizationEngine::new()));
+
+    let video_transcription_state = VideoTranscriptionState {
+        db: history_db.clone(),
+        whisper: whisper_engine.clone(),
+        diarization: diarization_engine,
+    };
+
+    // Initialize AI config — convert AiSettingsConfig (String provider) to AiConfig (enum provider)
+    let ai_provider_type = match config.ai.provider.to_lowercase().as_str() {
+        "lmstudio" | "lm_studio" => ai::config::AiProviderType::LmStudio,
+        "deepseek" => ai::config::AiProviderType::DeepSeek,
+        _ => ai::config::AiProviderType::Ollama,
+    };
+    let ai_config = Arc::new(Mutex::new(ai::config::AiConfig {
+        provider: ai_provider_type,
+        base_url: config.ai.base_url.clone(),
+        api_key: config.ai.api_key.clone(),
+        model: config.ai.model.clone(),
+    }));
+
     let config_arc = Arc::new(Mutex::new(config));
 
     tauri::Builder::default()
@@ -99,6 +126,8 @@ pub fn run() {
         .manage(pipeline)
         .manage(actual_sample_rate)
         .manage(actual_channels)
+        .manage(video_transcription_state)
+        .manage(ai_config)
         .invoke_handler(tauri::generate_handler![
             commands::transcription::transcribe_audio,
             commands::settings::get_config,
@@ -122,6 +151,20 @@ pub fn run() {
             commands::translation::check_marian_model,
             commands::translation::delete_marian_model,
             commands::translation::list_marian_models,
+            commands::video_transcription::transcribe_video,
+            commands::video_transcription::list_video_transcriptions,
+            commands::video_transcription::delete_video_transcription,
+            commands::video_transcription::get_video_transcription,
+            commands::video_transcription::update_video_transcription_summary,
+            commands::video_transcription::export_video_transcription,
+            ai::commands::list_ai_providers,
+            ai::commands::get_ai_config,
+            ai::commands::save_ai_config,
+            ai::commands::test_ai_connection,
+            ai::commands::ai_summarize,
+            ai::commands::ai_chat,
+            ai::commands::ai_chat_stream_start,
+            ai::commands::ai_translate_text,
         ])
         .setup(|app| {
             // Auto-load whisper model if configured
@@ -147,6 +190,15 @@ pub fn run() {
                 }
             } else {
                 tracing::info!("Model '{}' not found at {:?}, skipping auto-load", model_name, model_path);
+            }
+
+            // Initialize video transcriptions table
+            {
+                let db = app.state::<Arc<Mutex<HistoryDb>>>();
+                let db = db.lock().unwrap();
+                if let Err(e) = db.init_video_transcriptions_table() {
+                    tracing::error!("Failed to init video transcriptions table: {}", e);
+                }
             }
 
             // Show overlay window

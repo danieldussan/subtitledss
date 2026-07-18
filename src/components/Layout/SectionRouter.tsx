@@ -5,6 +5,7 @@ import { Dashboard } from "../Dashboard/Dashboard";
 import { AudioPage } from "../Audio/AudioPage";
 import { OverlayPage } from "../Overlay/OverlayPage";
 import { ShortcutsPage } from "../Shortcuts/ShortcutsPage";
+import { VideoTranscriptionPage } from "../VideoTranscription/VideoTranscriptionPage";
 import type { Section } from "./types";
 
 interface SectionRouterProps {
@@ -43,6 +44,8 @@ export function SectionRouter({
       );
     case "transcriptions":
       return <HistoryList />;
+    case "video":
+      return <VideoTranscriptionPage />;
     case "export":
       return (
         <div className="flex items-center justify-center h-full text-text-muted">

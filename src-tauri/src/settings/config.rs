@@ -9,6 +9,9 @@ pub struct AppConfig {
     pub overlay: OverlayConfig,
     pub translation: TranslationConfig,
     pub shortcuts: ShortcutsConfig,
+    pub ai: AiSettingsConfig,
+    #[serde(default)]
+    pub onboarding_completed: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -64,6 +67,14 @@ pub struct ShortcutsConfig {
     pub clear_history: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AiSettingsConfig {
+    pub provider: String,
+    pub base_url: String,
+    pub api_key: Option<String>,
+    pub model: String,
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
@@ -110,6 +121,13 @@ impl Default for AppConfig {
                 toggle_translation: "Ctrl+Shift+T".to_string(),
                 clear_history: "Ctrl+Shift+H".to_string(),
             },
+            ai: AiSettingsConfig {
+                provider: "ollama".to_string(),
+                base_url: "http://localhost:11434/v1".to_string(),
+                api_key: Some("ollama".to_string()),
+                model: "llama3.2".to_string(),
+            },
+            onboarding_completed: false,
         }
     }
 }
@@ -239,6 +257,14 @@ mod tests {
         assert_eq!(config.shortcuts.clear_history, "Ctrl+Shift+H");
     }
 
+    #[test]
+    fn test_default_ai_config() {
+        let config = AppConfig::default();
+        assert_eq!(config.ai.provider, "ollama");
+        assert_eq!(config.ai.base_url, "http://localhost:11434/v1");
+        assert_eq!(config.ai.model, "llama3.2");
+    }
+
     // ── Serialization / Deserialization ───────────────────────────
 
     #[test]
@@ -296,7 +322,13 @@ show_original = false\n\
 toggle_capture = \"Ctrl+Alt+S\"\n\
 toggle_overlay = \"Ctrl+Alt+O\"\n\
 toggle_translation = \"Ctrl+Alt+T\"\n\
-clear_history = \"Ctrl+Alt+H\"\n";
+clear_history = \"Ctrl+Alt+H\"\n\
+\n\
+[ai]\n\
+provider = \"Ollama\"\n\
+base_url = \"http://localhost:11434/v1\"\n\
+api_key = \"ollama\"\n\
+model = \"llama3.2\"\n";
         let config: AppConfig = toml::from_str(toml_str).unwrap();
         assert_eq!(config.audio.source, "microphone");
         assert_eq!(config.audio.device, "hw:0");

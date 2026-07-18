@@ -5,6 +5,7 @@ import { WhisperSettings } from "./WhisperSettings";
 import { TranslationSettings } from "./TranslationSettings";
 import { ThemeSettings } from "./ThemeSettings";
 import { ShortcutsSettings } from "./ShortcutsSettings";
+import { AiSettings } from "./AiSettings";
 
 type SettingsFilter = "general" | "appearance" | "advanced";
 
@@ -46,6 +47,7 @@ export function SettingsLayout({ config, onSave, isCapturing }: SettingsLayoutPr
               <AudioSettings config={config} onSave={onSave} isCapturing={isCapturing} />
               <WhisperSettings config={config} onSave={onSave} />
               <TranslationSettings config={config} onSave={onSave} />
+              <AiSettings config={config} onSave={onSave} />
             </div>
           )}
           {filter === "appearance" && (
