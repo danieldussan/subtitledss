@@ -132,6 +132,23 @@ jobs:
       - run: cargo check --all-targets
         working-directory: src-tauri
 
+  rust-check-macos:
+    name: Rust Check (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: cargo check --all-targets
+        working-directory: src-tauri
+
   tauri-build:
     name: Tauri Build
     runs-on: ubuntu-latest

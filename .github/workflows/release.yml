@@ -103,7 +103,7 @@ jobs:
           Architecture: amd64
           Depends: libasound2, libpipewire-0.3-0, libssl3, ffmpeg
           Maintainer: ddussan <ddussan@github.com>
-          Description: Real-time subtitle overlay for Linux
+          Description: Real-time subtitle overlay for Linux and macOS
            Real-time subtitle overlay powered by Whisper.cpp.
            Captures system audio and displays subtitles in real-time.
           EOF
@@ -123,17 +123,65 @@ jobs:
             subtitledss-*.deb
             subtitledss-*.tar.gz
 
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build frontend
+        run: bun run build
+
+      - name: Build Rust backend (Metal)
+        run: cargo build --release --features metal
+        working-directory: src-tauri
+
+      - name: Build DMG
+        run: cargo tauri build
+        working-directory: src-tauri
+
+      - name: Build raw binary
+        run: |
+          tar -czf subtitledss-${GITHUB_REF_NAME#v}-aarch64.tar.gz \
+            -C src-tauri/target/release subtitledss
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-builds
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            subtitledss-*.tar.gz
+
   create-release:
     name: Create Release
-    needs: build-linux
+    needs: [build-linux, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download artifacts
+      - name: Download Linux artifacts
         uses: actions/download-artifact@v4
         with:
           name: linux-builds
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-builds
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -142,53 +190,60 @@ jobs:
           body: |
             ## subtitledss ${{ github.ref_name }}
 
-            Real-time subtitle overlay for Linux, powered by Whisper.cpp.
+            Real-time subtitle overlay for Linux and macOS, powered by Whisper.cpp.
 
             ### Installation
 
-            **AppImage (any distro):**
+            **macOS (DMG):**
+            1. Download `subtitledss-*.dmg`
+            2. Open the DMG and drag `subtitledss.app` to Applications
+            3. First launch: right-click → Open (unsigned app)
+            4. Microphone access: allow in System Preferences → Security & Privacy
+
+            **macOS (manual):**
+            ```bash
+            tar -xzf subtitledss-*.tar.gz
+            ./subtitledss
+            ```
+
+            **Linux (AppImage):**
             ```bash
             chmod +x subtitledss-*.AppImage
             ./subtitledss-*.AppImage
             ```
 
-            **Debian/Ubuntu:**
+            **Linux (Debian/Ubuntu):**
             ```bash
             sudo dpkg -i subtitledss-*.deb
             ```
 
-            **Arch Linux (manual):**
+            **Linux (Arch):**
             ```bash
             tar -xzf subtitledss-*.tar.gz
             sudo cp subtitledss /usr/bin/subtitledss
             ```
 
-            **From source:**
-            ```bash
-            git clone https://github.com/danieldussan/subtitledss.git
-            cd subtitledss
-            bun install
-            bun run tauri build
-            ```
+            **System Audio on macOS:**
+            Requires [BlackHole](https://github.com/ExistentialAudio/BlackHole) for system audio capture.
+            See README for setup instructions.
 
-            ### GPU Acceleration
-
-            Build with CUDA (NVIDIA):
-            ```bash
-            cargo build --release --features cuda
-            ```
+            **GPU Acceleration:**
+            - macOS: Metal (Apple Silicon) — included in DMG build
+            - Linux: CUDA/Vulkan — build from source with `--features cuda`
 
             ### Changes
             - Real-time transcription with whisper.cpp
-            - System audio capture (PipeWire)
+            - System audio capture (PipeWire on Linux, BlackHole on macOS)
             - Transparent subtitle overlay
             - System tray with global shortcuts
             - History with FTS5 search
             - Export to SRT/VTT/TXT/JSON
+            - macOS support with Metal GPU acceleration
           files: |
             subtitledss-*.AppImage
             subtitledss-*.deb
             subtitledss-*.tar.gz
+            subtitledss-*.dmg
           draft: false
           prerelease: true
         env:

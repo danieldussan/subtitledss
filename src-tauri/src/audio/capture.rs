@@ -74,10 +74,21 @@ impl AudioCapture {
                 }
                 seen.insert(name.clone());
                 if let Ok(cfg) = device.default_input_config() {
+                    #[cfg(target_os = "macos")]
+                    let is_monitor = name.contains("BlackHole")
+                        || name.contains("Soundflower")
+                        || name.contains("Aggregate Device")
+                        || name.contains("System Audio");
+
+                    #[cfg(target_os = "linux")]
                     let is_monitor = name.contains("Monitor")
                         || name.contains("monitor")
                         || name.contains("sink")
                         || name.contains("Sink");
+
+                    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+                    let is_monitor = name.contains("Stereo Mix");
+
                     let kind = if is_monitor { "system" } else { "mic" };
                     let info = AudioDeviceInfo {
                         name: name.clone(),

@@ -44,10 +44,15 @@ impl VideoProcessor {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
+            #[cfg(target_os = "macos")]
+            let hint = "\n\nHint: Install FFmpeg on macOS with: brew install ffmpeg";
+            #[cfg(not(target_os = "macos"))]
+            let hint = "";
             return Err(anyhow::anyhow!(
-                "FFmpeg audio extraction failed (exit code: {:?}): {}",
+                "FFmpeg audio extraction failed (exit code: {:?}): {}{}",
                 output.status.code(),
-                stderr.chars().take(500).collect::<String>()
+                stderr.chars().take(500).collect::<String>(),
+                hint
             ));
         }
 

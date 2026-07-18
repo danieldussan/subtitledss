@@ -3,10 +3,10 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Version](https://img.shields.io/badge/version-1.0.0-green.svg)
 ![CI](https://github.com/danieldussan/subtitledss/actions/workflows/ci.yml/badge.svg)
-![Platform](https://img.shields.io/badge/platform-Linux-lightgrey.svg)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey.svg)
 ![Whisper](https://img.shields.io/badge/whisper-cpp-orange.svg)
 
-**Real-time subtitle overlay for Linux.** 100% offline, powered by whisper.cpp.
+**Real-time subtitle overlay for Linux & macOS.** 100% offline, powered by whisper.cpp.
 
 ![subtitledss](src-tauri/icons/icon.png)
 
@@ -47,6 +47,18 @@ sudo dpkg -i subtitledss-*.deb
 sudo apt-get install -f   # fix dependencies if needed
 ```
 
+### macOS
+
+Download the `.dmg` file from [Releases](https://github.com/danieldussan/subtitledss/releases), open it, and drag `subtitledss` to your Applications folder.
+
+**System audio capture:** macOS requires [BlackHole](https://github.com/ExistentialAudio/BlackHole) to capture system audio. Install via Homebrew:
+
+```bash
+brew install blackhole-2ch
+```
+
+Then configure your audio MIDI setup to create a Multi-Output Device that includes both your speakers and BlackHole.
+
 ### From Source
 
 **Prerequisites:**
@@ -56,6 +68,7 @@ sudo apt-get install -f   # fix dependencies if needed
 | Arch Linux      | `sudo pacman -S rust bun pipewire libpipewire cmake`                                                                          |
 | Ubuntu / Debian | `sudo apt install rustc cargo bun libpipewire-0.3-dev libasound2-dev cmake libglib2.0-dev libgtk-3-dev libwebkit2gtk-4.1-dev` |
 | Fedora          | `sudo dnf install rust cargo bun pipewire-devel alsa-lib-devel cmake glib2-devel gtk3-devel webkit2gtk4.1-devel`              |
+| macOS           | `brew install rust bun cmake`                                                                                                 |
 
 **Build:**
 
@@ -76,6 +89,9 @@ cd src-tauri && cargo build --release --features cuda
 
 # Vulkan
 cd src-tauri && cargo build --release --features vulkan
+
+# Metal (macOS / Apple Silicon — automatic with --features metal)
+cd src-tauri && cargo build --release --features metal
 ```
 
 ---
@@ -85,7 +101,7 @@ cd src-tauri && cargo build --release --features vulkan
 1. Launch `subtitledss`
 2. Go to **Settings** → download a Whisper model (start with **Base** — 142 MB)
 3. Click **Load** on the downloaded model
-4. Click the microphone button or press `Ctrl+Shift+S` to start capture
+4. Click the microphone button or press `Ctrl+Shift+S` (macOS: `Cmd+Shift+S`) to start capture
 5. Subtitles appear in a transparent overlay on screen
 
 ---
@@ -247,12 +263,13 @@ Export transcription history to:
 
 ### Keyboard Shortcuts & System Tray
 
-| Shortcut       | Action                    |
-| -------------- | ------------------------- |
-| `Ctrl+Shift+S` | Toggle audio capture      |
-| `Ctrl+Shift+O` | Toggle overlay visibility |
-| `Ctrl+Shift+T` | Toggle translation        |
-| `Ctrl+Shift+H` | Clear history             |
+| Shortcut              | Action                    |
+| --------------------- | ------------------------- |
+| `Ctrl+Shift+S`        | Toggle audio capture      |
+| `Ctrl+Shift+O`        | Toggle overlay visibility |
+| `Ctrl+Shift+T`        | Toggle translation        |
+| `Ctrl+Shift+H`        | Clear history             |
+| macOS: use `Cmd` instead of `Ctrl` |                     |
 
 System tray provides quick access to start/stop capture, toggle overlay, show window, and quit.
 
@@ -271,7 +288,7 @@ System tray provides quick access to start/stop capture, toggle overlay, show wi
 | Linting       | oxlint (OXC)                  |
 | Formatting    | oxfmt (OXC)                   |
 | Transcription | whisper.cpp (whisper-rs 0.16) |
-| Audio         | CPAL 0.18 (PipeWire)          |
+| Audio         | CPAL 0.18 (PipeWire/macOS CoreAudio) |
 | Translation   | candle + Marian MT            |
 | Database      | SQLite + FTS5                 |
 
@@ -333,16 +350,17 @@ cargo build          # Build binary
 
 ## CI/CD
 
-GitHub Actions runs **6 checks** on every push and PR to `main`:
+GitHub Actions runs **7 checks** on every push and PR to `main`:
 
-| Job           | What it does                                            |
-| ------------- | ------------------------------------------------------- |
-| Lint & Format | `bun run lint` + `bun run fmt:check`                    |
-| TypeCheck     | `bun run typecheck`                                     |
-| Rust Clippy   | `cargo clippy --all-targets -- -D warnings`             |
-| Rust Tests    | `cargo test` (93 tests)                                 |
-| Rust Check    | `cargo check --all-targets`                             |
-| Tauri Build   | Full `bun run tauri build` (requires all above to pass) |
+| Job              | What it does                                            |
+| ---------------- | ------------------------------------------------------- |
+| Lint & Format    | `bun run lint` + `bun run fmt:check`                    |
+| TypeCheck        | `bun run typecheck`                                     |
+| Rust Clippy      | `cargo clippy --all-targets -- -D warnings`             |
+| Rust Tests       | `cargo test` (93 tests)                                 |
+| Rust Check       | `cargo check --all-targets`                             |
+| Rust Check macOS | `cargo check --all-targets` (macOS runner)              |
+| Tauri Build      | Full `bun run tauri build` (requires all above to pass) |
 
 ---
 

@@ -36,7 +36,19 @@ pub fn run() {
         )
         .init();
 
+    #[cfg(target_os = "macos")]
+    let mut config = AppConfig::load();
+    #[cfg(not(target_os = "macos"))]
     let config = AppConfig::load();
+
+    // Override shortcut display strings on macOS
+    #[cfg(target_os = "macos")]
+    {
+        config.shortcuts.toggle_capture = "Cmd+Shift+S".to_string();
+        config.shortcuts.toggle_overlay = "Cmd+Shift+O".to_string();
+        config.shortcuts.toggle_translation = "Cmd+Shift+T".to_string();
+    }
+
     let whisper_engine = Arc::new(Mutex::new(WhisperEngine::new()));
     let overlay_config = OverlayConfig {
         x: config.overlay.x,
@@ -133,6 +145,7 @@ pub fn run() {
             commands::settings::get_config,
             commands::settings::save_config,
             commands::settings::list_audio_devices,
+            commands::settings::get_platform,
             commands::history::get_history,
             commands::history::search_history,
             commands::history::clear_history,
@@ -301,7 +314,12 @@ pub fn run() {
             // Global shortcuts
             use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
-            let ctrl_shift_s = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyS);
+            #[cfg(target_os = "macos")]
+            let modifier = Modifiers::META;  // Cmd key on macOS
+            #[cfg(not(target_os = "macos"))]
+            let modifier = Modifiers::CONTROL;  // Ctrl key on Linux/Windows
+
+            let ctrl_shift_s = Shortcut::new(Some(modifier | Modifiers::SHIFT), Code::KeyS);
             app.global_shortcut().on_shortcut(ctrl_shift_s, move |app, _shortcut, event| {
                 if event.state == ShortcutState::Pressed {
                     tracing::info!("Global shortcut: toggle capture");
@@ -309,7 +327,7 @@ pub fn run() {
                 }
             })?;
 
-            let ctrl_shift_o = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyO);
+            let ctrl_shift_o = Shortcut::new(Some(modifier | Modifiers::SHIFT), Code::KeyO);
             app.global_shortcut().on_shortcut(ctrl_shift_o, move |app, _shortcut, event| {
                 if event.state == ShortcutState::Pressed {
                     tracing::info!("Global shortcut: toggle overlay");
@@ -317,7 +335,7 @@ pub fn run() {
                 }
             })?;
 
-            let ctrl_shift_t = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyT);
+            let ctrl_shift_t = Shortcut::new(Some(modifier | Modifiers::SHIFT), Code::KeyT);
             app.global_shortcut().on_shortcut(ctrl_shift_t, move |app, _shortcut, event| {
                 if event.state == ShortcutState::Pressed {
                     tracing::info!("Global shortcut: toggle translation");

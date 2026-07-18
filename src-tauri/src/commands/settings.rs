@@ -57,3 +57,15 @@ pub async fn save_config(
 pub async fn list_audio_devices() -> Result<Vec<AudioDeviceInfo>, String> {
     crate::audio::AudioCapture::list_devices().map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn get_platform() -> String {
+    #[cfg(target_os = "macos")]
+    { "macos".to_string() }
+    #[cfg(target_os = "linux")]
+    { "linux".to_string() }
+    #[cfg(target_os = "windows")]
+    { "windows".to_string() }
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    { "unknown".to_string() }
+}

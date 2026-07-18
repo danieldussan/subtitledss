@@ -24,9 +24,11 @@ export function AudioSettings({ config, onSave, isCapturing }: AudioSettingsProp
   const [vadThreshold, setVadThreshold] = useState(config.audio.vad_threshold);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [platform, setPlatform] = useState<string>("linux");
 
   useEffect(() => {
     loadDevices();
+    invoke<string>("get_platform").then(setPlatform).catch(() => {});
   }, []);
 
   const loadDevices = async () => {
@@ -103,10 +105,31 @@ export function AudioSettings({ config, onSave, isCapturing }: AudioSettingsProp
             </div>
             <p className="text-[11px] text-text-muted mt-1">
               {source === "system"
-                ? "Select the monitor of your audio output (e.g., sink_default, Monitor of ...)"
+                ? platform === "macos"
+                  ? "Select BlackHole or Soundflower as your system audio input"
+                  : "Select the monitor of your audio output (e.g., sink_default, Monitor of ...)"
                 : "Select your microphone input device"}
             </p>
           </div>
+
+          {source === "system" && platform === "macos" && (
+            <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/20 p-3 text-[12px]">
+              <p className="text-yellow-400 font-medium">macOS System Audio</p>
+              <p className="text-text-secondary mt-1">
+                macOS requires a virtual audio driver to capture system audio.
+                Install{" "}
+                <a
+                  href="https://github.com/ExistentialAudio/BlackHole"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 underline hover:text-blue-300"
+                >
+                  BlackHole
+                </a>{" "}
+                and set it as your audio output device in Audio MIDI Setup.
+              </p>
+            </div>
+          )}
 
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -146,7 +169,13 @@ export function AudioSettings({ config, onSave, isCapturing }: AudioSettingsProp
           </div>
           <div className="flex items-center gap-2">
             <span className="text-text-muted w-24">Backend</span>
-            <span>CPAL + PipeWire</span>
+            <span>
+              {platform === "macos"
+                ? "CPAL + CoreAudio"
+                : platform === "windows"
+                  ? "CPAL + WASAPI"
+                  : "CPAL + PipeWire"}
+            </span>
           </div>
         </div>
       </div>
