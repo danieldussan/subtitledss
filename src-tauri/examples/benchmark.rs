@@ -95,11 +95,11 @@ fn main() {
 
         let (full_text, full_rtf, chunk_rtf) = if is_whisper {
             let mut eng = WhisperEngine::new();
-            eng.load_model(&path).expect("load whisper model");
+            eng.load_model(&path, false).expect("load whisper model");
             run_whisper(&eng, &samples, &params)
         } else {
             let mut eng = SherpaEngine::new();
-            eng.load_model(&path).expect("load sherpa model");
+            eng.load_model(&path, false).expect("load sherpa model");
             run_sherpa(&mut eng, &samples, &params)
         };
 

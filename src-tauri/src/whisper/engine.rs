@@ -20,16 +20,19 @@ impl WhisperEngine {
         }
     }
 
-    pub fn load_model(&mut self, model_path: &Path) -> anyhow::Result<()> {
-        info!("Loading Whisper model from {:?}", model_path);
+    pub fn load_model(&mut self, model_path: &Path, gpu: bool) -> anyhow::Result<()> {
+        info!("Loading Whisper model from {:?} (gpu={})", model_path, gpu);
 
         if !model_path.exists() {
             return Err(anyhow::anyhow!("Model file not found: {:?}", model_path));
         }
 
+        let mut ctx_params = WhisperContextParameters::default();
+        ctx_params.use_gpu(gpu);
+
         let ctx = WhisperContext::new_with_params(
             model_path.to_str().unwrap(),
-            WhisperContextParameters::default(),
+            ctx_params,
         )
         .map_err(|e| anyhow::anyhow!("Failed to load model: {}", e))?;
 

@@ -49,7 +49,9 @@
     "resources": {
       "vendor/sherpa/libsherpa-onnx-c-api.so": "",
       "vendor/sherpa/libsherpa-onnx-cxx-api.so": "",
-      "vendor/sherpa/libonnxruntime.so": ""
+      "vendor/sherpa/libonnxruntime.so": "",
+      "vendor/sherpa/libonnxruntime_providers_cuda.so": "",
+      "vendor/sherpa/libonnxruntime_providers_shared.so": ""
     },
     "icon": [
       "icons/32x32.png",

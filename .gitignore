@@ -34,6 +34,10 @@ Thumbs.db
 models/*.bin
 models/*.gguf
 
+# CUDA provider libs (downloaded at build time)
+src-tauri/vendor/sherpa/libonnxruntime_providers_cuda.so
+src-tauri/vendor/sherpa/libonnxruntime_providers_shared.so
+
 # Database
 *.db
 *.db-journal

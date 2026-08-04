@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AppConfig } from "../../hooks/useSettings";
-import { Check, Zap, Loader2, Cpu } from "lucide-react";
+import { Check, Zap, Loader2 } from "lucide-react";
 
 interface AvailableModel {
   name: string;
@@ -43,7 +43,6 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
   }, []);
 
   const selectedEngine = models.find((m) => m.name === model)?.engine ?? "whisper";
-  const gpuDisabled = selectedEngine === "sherpa";
 
   const handleSave = async () => {
     try {
@@ -52,7 +51,7 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
 
       await onSave({
         ...config,
-        whisper: { ...config.whisper, model, language, threads, gpu: gpuDisabled ? false : gpu },
+        whisper: { ...config.whisper, model, language, threads, gpu },
       });
 
       if (model !== config.whisper.model) {
@@ -188,31 +187,23 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
             </div>
           </div>
 
-          <div
-            className={`flex items-center justify-between p-3 bg-bg-base rounded-lg border border-border-subtle ${
-              gpuDisabled ? "opacity-60" : ""
-            }`}
-          >
+          <div className="flex items-center justify-between p-3 bg-bg-base rounded-lg border border-border-subtle">
             <div className="flex items-center gap-2">
-              {gpuDisabled ? (
-                <Cpu size={14} className="text-text-muted" />
-              ) : (
-                <Zap size={14} className="text-text-muted" />
-              )}
+              <Zap size={14} className="text-text-muted" />
               <div>
                 <span className="text-[13px] text-text-primary">GPU Acceleration</span>
                 <p className="text-[11px] text-text-muted">
-                  {gpuDisabled
-                    ? "Sherpa models run on CPU only"
-                    : "CUDA / Vulkan / Metal (Whisper)"}
+                  {selectedEngine === "sherpa"
+                    ? "CUDA (sherpa-onnx)"
+                    : "CUDA / Vulkan / Metal (whisper.cpp)"}
                 </p>
               </div>
             </div>
             <div
-              className={`toggle-switch ${gpu && !gpuDisabled ? "active" : ""}`}
-              onClick={() => !gpuDisabled && setGpu(!gpu)}
+              className={`toggle-switch ${gpu ? "active" : ""}`}
+              onClick={() => setGpu(!gpu)}
               role="switch"
-              aria-checked={gpu && !gpuDisabled}
+              aria-checked={gpu}
             />
           </div>
         </div>

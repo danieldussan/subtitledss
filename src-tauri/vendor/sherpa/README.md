@@ -12,10 +12,22 @@ por la versión correcta de onnxruntime (ver abajo).
 | `libsherpa-onnx-cxx-api.so` | mismo tarball | NEEDED `libsherpa-onnx-c-api.so` + `libonnxruntime.so` |
 | `libonnxruntime.so` | `onnxruntime-linux-x64-1.27.0.tgz` (release `v1.27.0` de microsoft/onnxruntime) | Copia de `lib/libonnxruntime.so.1.27.0` renombrada |
 
+### CUDA provider (no trackeado en git — >100MB)
+
+| Archivo | Fuente | Comentario |
+|---|---|---|
+| `libonnxruntime_providers_cuda.so` | `sherpa-onnx-v1.13.4-cuda-12.x-cudnn-9.x-linux-x64-gpu.tar.bz2` | ~301MB. Descargado via `scripts/fetch-cuda-libs.sh` |
+| `libonnxruntime_providers_shared.so` | mismo tarball | ~15KB. Requerido por el provider CUDA |
+
+**No están en git** (exceden el límite de 100MB de GitHub). Se descargan
+automáticamente con `scripts/fetch-cuda-libs.sh` antes del build, o se copian
+manualmente del tarball.
+
 URLs de descarga:
 
 - `https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.4/sherpa-onnx-v1.13.4-linux-x64-shared-lib.tar.bz2`
 - `https://github.com/microsoft/onnxruntime/releases/download/v1.27.0/onnxruntime-linux-x64-1.27.0.tgz`
+- `https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.4/sherpa-onnx-v1.13.4-cuda-12.x-cudnn-9.x-linux-x64-gpu.tar.bz2` (CUDA provider, descargado via script)
 
 ## Por qué el reemplazo de onnxruntime
 
@@ -46,7 +58,8 @@ es siempre relativa al directorio donde estén los `.so`.
 3. Bajar el onnxruntime correspondiente desde
    `https://github.com/microsoft/onnxruntime/releases` y copiar su
    `lib/libonnxruntime.so.*` renombrado a `libonnxruntime.so`.
-4. Actualizar las rutas en `tauri.conf.json` (`bundle.resources`) y este README.
+4. Actualizar la versión en `scripts/fetch-cuda-libs.sh` y descargar las CUDA libs.
+5. Actualizar las rutas en `tauri.conf.json` (`bundle.resources`) y este README.
 
 ## Empaquetado / release
 

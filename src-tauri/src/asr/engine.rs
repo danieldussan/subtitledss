@@ -56,10 +56,21 @@ impl AsrEngine {
         }
     }
 
-    pub fn load_model(&mut self, model_path: &Path) -> anyhow::Result<()> {
+    /// Replace the inner engine with a new one of the given kind if it doesn't
+    /// already match. Returns `true` if the engine was swapped.
+    pub fn switch_kind(&mut self, kind: EngineKind) -> bool {
+        if self.kind() != kind {
+            *self = AsrEngine::new(kind);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn load_model(&mut self, model_path: &Path, gpu: bool) -> anyhow::Result<()> {
         match self {
-            AsrEngine::Whisper(e) => e.load_model(model_path),
-            AsrEngine::Sherpa(e) => e.load_model(model_path),
+            AsrEngine::Whisper(e) => e.load_model(model_path, gpu),
+            AsrEngine::Sherpa(e) => e.load_model(model_path, gpu),
         }
     }
 

@@ -210,7 +210,7 @@ pub fn run() {
             if model_path.exists() {
                 let asr = app.state::<Arc<Mutex<AsrEngine>>>();
                 let mut engine = asr.lock().unwrap();
-                match engine.load_model(&model_path) {
+                match engine.load_model(&model_path, config.whisper.gpu) {
                     Ok(()) => tracing::info!(
                         "Auto-loaded {} model: {}",
                         engine_kind.as_str(),

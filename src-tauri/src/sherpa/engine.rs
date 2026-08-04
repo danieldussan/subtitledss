@@ -4,7 +4,7 @@ use sherpa_onnx::{
     OfflineCanaryModelConfig, OfflineRecognizer, OfflineRecognizerConfig,
     OfflineSenseVoiceModelConfig, OfflineTransducerModelConfig,
 };
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::asr::engine::TranscriptionSegment;
 use crate::whisper::params::TranscriptionParams;
@@ -40,6 +40,7 @@ pub struct SherpaEngine {
     model_name: Option<String>,
     kind: Option<SherpaModelKind>,
     threads: i32,
+    provider: String,
     /// Canary encodes src/tgt language into the graph; we rebuild the
     /// recognizer if the requested language changes.
     canary_lang: Option<String>,
@@ -53,6 +54,7 @@ impl SherpaEngine {
             model_name: None,
             kind: None,
             threads: 4,
+            provider: "cpu".to_string(),
             canary_lang: None,
         }
     }
@@ -60,7 +62,7 @@ impl SherpaEngine {
     /// Load a sherpa-onnx model package. `model_path` must point to a
     /// directory containing the ONNX files + tokens.txt (e.g.
     /// `models/sherpa/parakeet-tdt-0.6b-v3-int8/`).
-    pub fn load_model(&mut self, model_path: &Path) -> anyhow::Result<()> {
+    pub fn load_model(&mut self, model_path: &Path, gpu: bool) -> anyhow::Result<()> {
         if !model_path.exists() || !model_path.is_dir() {
             return Err(anyhow::anyhow!(
                 "Sherpa model directory not found: {:?}",
@@ -76,15 +78,34 @@ impl SherpaEngine {
         let kind = SherpaModelKind::from_dir_name(name)
             .ok_or_else(|| anyhow::anyhow!("Unknown sherpa model type in '{}'", name))?;
 
-        info!("Loading sherpa-onnx model '{}' ({:?})", name, kind);
+        let provider = if gpu { "cuda" } else { "cpu" };
+        info!(
+            "Loading sherpa-onnx model '{}' ({:?}, provider={})",
+            name, kind, provider
+        );
 
-        let recognizer = build_recognizer(model_path, kind, self.threads, None)
-            .ok_or_else(|| anyhow::anyhow!("Failed to create sherpa recognizer for '{}'", name))?;
+        // Try requested provider; fall back to CPU if unavailable
+        let mut actual_provider = provider.to_string();
+        let recognizer =
+            build_recognizer(model_path, kind, self.threads, None, provider).or_else(|e| {
+                if provider == "cuda" {
+                    warn!(
+                        "CUDA provider unavailable ({}), falling back to CPU",
+                        e
+                    );
+                    actual_provider = "cpu".to_string();
+                    build_recognizer(model_path, kind, self.threads, None, "cpu")
+                } else {
+                    Err(e)
+                }
+            })
+            .map_err(|e| anyhow::anyhow!("Failed to create sherpa recognizer for '{}': {}", name, e))?;
 
         self.recognizer = Some(recognizer);
         self.model_path = Some(model_path.to_path_buf());
         self.model_name = Some(name.to_string());
         self.kind = Some(kind);
+        self.provider = actual_provider;
         self.canary_lang = None;
 
         info!("Sherpa model '{}' loaded", name);
@@ -110,8 +131,9 @@ impl SherpaEngine {
                     .as_ref()
                     .ok_or_else(|| anyhow::anyhow!("Sherpa model not loaded"))?;
                 info!("Rebuilding Canary recognizer for language '{}'", lang);
-                let recognizer = build_recognizer(model_path, kind, self.threads, Some(&lang))
-                    .ok_or_else(|| anyhow::anyhow!("Failed to reload Canary recognizer"))?;
+                let recognizer =
+                    build_recognizer(model_path, kind, self.threads, Some(&lang), &self.provider)
+                    .map_err(|e| anyhow::anyhow!("Failed to reload Canary recognizer: {}", e))?;
                 self.recognizer = Some(recognizer);
                 self.canary_lang = Some(lang);
             }
@@ -223,10 +245,11 @@ fn build_recognizer(
     kind: SherpaModelKind,
     threads: i32,
     canary_lang: Option<&str>,
-) -> Option<OfflineRecognizer> {
+    provider: &str,
+) -> anyhow::Result<OfflineRecognizer> {
     let mut config = OfflineRecognizerConfig::default();
     config.model_config.num_threads = threads;
-    config.model_config.provider = Some("cpu".to_string());
+    config.model_config.provider = Some(provider.to_string());
 
     match kind {
         SherpaModelKind::SenseVoice => {
@@ -260,4 +283,5 @@ fn build_recognizer(
     }
 
     OfflineRecognizer::create(&config)
+        .ok_or_else(|| anyhow::anyhow!("OfflineRecognizer::create returned None (provider={})", provider))
 }

@@ -9,6 +9,7 @@ use crate::audio::buffer::RingBuffer;
 use crate::audio::capture::SAMPLES_PUSHED;
 use crate::history::HistoryDb;
 use crate::settings::config::AppConfig;
+use crate::vad::VadDetector;
 use crate::whisper::params::TranscriptionParams;
 use crate::translation::marian::MarianEngine;
 
@@ -56,6 +57,9 @@ impl TranscriptionPipeline {
 
         info!("Pipeline starting: language={}, threads={}, gpu={}, translation_enabled={}",
             language, threads, gpu, translation_enabled);
+
+        let mut vad = VadDetector::new(config.audio.vad_threshold as f32, CHUNK_SAMPLES);
+        vad.set_max_silence_frames(2);
 
         let handle = tokio::spawn(async move {
             let mut last_samples_pushed: u64 = 0;
@@ -135,6 +139,19 @@ impl TranscriptionPipeline {
                     continue;
                 }
 
+                let chunk_seconds = audio_chunk.len() as f64 / 16000.0;
+
+                // VAD — skip silent chunks to avoid model hallucinations
+                let vad_result = vad.detect(&audio_chunk);
+                if !vad_result.is_speaking {
+                    info!(
+                        "VAD: silent chunk ({:.1}s, energy={:.4}), skipping transcription",
+                        chunk_seconds,
+                        vad_result.energy,
+                    );
+                    continue;
+                }
+
                 // Transcribe — do NOT hold any other lock while transcribing
                 let start_time = std::time::Instant::now();
                 let segments = {
@@ -159,7 +176,6 @@ impl TranscriptionPipeline {
                 };
 
                 let elapsed_ms = start_time.elapsed().as_millis();
-                let chunk_seconds = audio_chunk.len() as f64 / 16000.0;
                 let speed_ratio = chunk_seconds * 1000.0 / elapsed_ms as f64;
 
                 if segments.is_empty() {
@@ -176,6 +192,16 @@ impl TranscriptionPipeline {
 
                 if text.is_empty() {
                     info!("Empty after filter ({:.1}s, {}ms)", chunk_seconds, elapsed_ms);
+                    continue;
+                }
+
+                // Filter known hallucination patterns (Canary/others produce
+                // these during silence that slips past VAD)
+                if is_hallucination(&text) {
+                    info!(
+                        "Hallucination filtered ({:.1}s): {}",
+                        chunk_seconds, text
+                    );
                     continue;
                 }
 
@@ -264,4 +290,31 @@ impl TranscriptionPipeline {
             handle.abort();
         }
     }
+}
+
+/// Check if transcribed text is a known model hallucination.
+/// Canary and other models produce these during silence that slips past VAD.
+fn is_hallucination(text: &str) -> bool {
+    const HALLUCINATIONS: &[&str] = &[
+        "thank you",
+        "thanks for watching",
+        "thanks for watching!",
+        "subscribe",
+        "please subscribe",
+        "like and subscribe",
+        "thank you for watching",
+        "thank you for watching!",
+        "so",
+        "Mmm",
+        "Hmm",
+        "uh",
+        "um",
+    ];
+
+    let lower = text.to_lowercase();
+    let trimmed = lower.trim();
+
+    HALLUCINATIONS
+        .iter()
+        .any(|&h| trimmed == h || trimmed == format!("{}.", h) || trimmed == format!("{}!", h))
 }

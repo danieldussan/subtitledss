@@ -136,6 +136,7 @@ pub async fn load_model(
     model_name: String,
     asr_engine: State<'_, Arc<Mutex<AsrEngine>>>,
     model_manager: State<'_, Arc<Mutex<ModelManager>>>,
+    config: State<'_, Arc<Mutex<AppConfig>>>,
 ) -> Result<String, String> {
     let models_dir = {
         let manager = model_manager.lock().map_err(|e| e.to_string())?;
@@ -158,8 +159,17 @@ pub async fn load_model(
         models_dir.join(format!("ggml-{}.bin", model_name))
     };
 
+    let gpu = config.lock().map_err(|e| e.to_string())?.whisper.gpu;
+
+    let desired_kind = if sherpa_models::is_sherpa_model(&model_name) {
+        crate::asr::engine::EngineKind::Sherpa
+    } else {
+        crate::asr::engine::EngineKind::Whisper
+    };
+
     let mut engine = asr_engine.lock().map_err(|e| e.to_string())?;
-    engine.load_model(&model_path)
+    engine.switch_kind(desired_kind);
+    engine.load_model(&model_path, gpu)
         .map_err(|e| format!("Failed to load model: {}", e))?;
 
     info!("Model '{}' loaded successfully", model_name);
@@ -195,20 +205,25 @@ pub async fn switch_model(
         models_dir.join(format!("ggml-{}.bin", model_name))
     };
 
+    let gpu = config.lock().map_err(|e| e.to_string())?.whisper.gpu;
+
+    let desired_kind = if sherpa_models::is_sherpa_model(&model_name) {
+        crate::asr::engine::EngineKind::Sherpa
+    } else {
+        crate::asr::engine::EngineKind::Whisper
+    };
+
     {
         let mut engine = asr_engine.lock().map_err(|e| e.to_string())?;
-        engine.load_model(&model_path)
+        engine.switch_kind(desired_kind);
+        engine.load_model(&model_path, gpu)
             .map_err(|e| format!("Failed to load model: {}", e))?;
     }
 
     {
         let mut cfg = config.lock().map_err(|e| e.to_string())?;
         cfg.whisper.model = model_name.clone();
-        cfg.whisper.engine = if sherpa_models::is_sherpa_model(&model_name) {
-            "sherpa".to_string()
-        } else {
-            "whisper".to_string()
-        };
+        cfg.whisper.engine = desired_kind.as_str().to_string();
         cfg.save().map_err(|e| e.to_string())?;
     }
 
