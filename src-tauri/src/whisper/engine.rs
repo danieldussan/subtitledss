@@ -1,7 +1,9 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 use tracing::info;
+
+use crate::asr::engine::TranscriptionSegment;
 
 use super::params::TranscriptionParams;
 
@@ -18,7 +20,7 @@ impl WhisperEngine {
         }
     }
 
-    pub fn load_model(&mut self, model_path: &PathBuf) -> anyhow::Result<()> {
+    pub fn load_model(&mut self, model_path: &Path) -> anyhow::Result<()> {
         info!("Loading Whisper model from {:?}", model_path);
 
         if !model_path.exists() {
@@ -32,7 +34,7 @@ impl WhisperEngine {
         .map_err(|e| anyhow::anyhow!("Failed to load model: {}", e))?;
 
         self.context = Some(Arc::new(ctx));
-        self.model_path = Some(model_path.clone());
+        self.model_path = Some(model_path.to_path_buf());
 
         info!("Whisper model loaded successfully from {:?}", model_path);
         Ok(())
@@ -93,11 +95,4 @@ impl Default for WhisperEngine {
     fn default() -> Self {
         Self::new()
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct TranscriptionSegment {
-    pub start: f64,
-    pub end: f64,
-    pub text: String,
 }

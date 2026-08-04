@@ -1,7 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { AppConfig } from "../../hooks/useSettings";
-import { Check, Zap, Loader2 } from "lucide-react";
+import { Check, Zap, Loader2, Cpu } from "lucide-react";
+
+interface AvailableModel {
+  name: string;
+  label: string;
+  engine: string;
+  size_mb: number;
+  languages: string;
+  description: string;
+  downloaded: boolean;
+}
 
 interface WhisperSettingsProps {
   config: AppConfig;
@@ -9,14 +19,31 @@ interface WhisperSettingsProps {
   loadedModel: string | null;
 }
 
+function formatSize(mb: number) {
+  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
+  return `${Math.round(mb)} MB`;
+}
+
 export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettingsProps) {
   const [model, setModel] = useState(config.whisper.model);
   const [language, setLanguage] = useState(config.whisper.language);
   const [threads, setThreads] = useState(config.whisper.threads);
   const [gpu, setGpu] = useState(config.whisper.gpu);
+  const [models, setModels] = useState<AvailableModel[]>([]);
   const [saved, setSaved] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    invoke<AvailableModel[]>("list_available_models")
+      .then(setModels)
+      .catch((err) => {
+        console.error("Failed to load model catalog:", err);
+      });
+  }, []);
+
+  const selectedEngine = models.find((m) => m.name === model)?.engine ?? "whisper";
+  const gpuDisabled = selectedEngine === "sherpa";
 
   const handleSave = async () => {
     try {
@@ -25,7 +52,7 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
 
       await onSave({
         ...config,
-        whisper: { ...config.whisper, model, language, threads, gpu },
+        whisper: { ...config.whisper, model, language, threads, gpu: gpuDisabled ? false : gpu },
       });
 
       if (model !== config.whisper.model) {
@@ -41,14 +68,6 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
       setSwitching(false);
     }
   };
-
-  const models = [
-    { value: "tiny", label: "Tiny", size: "39 MB", desc: "Fastest, lowest accuracy" },
-    { value: "base", label: "Base", size: "142 MB", desc: "Good balance for most uses" },
-    { value: "small", label: "Small", size: "466 MB", desc: "Better accuracy" },
-    { value: "medium", label: "Medium", size: "1.5 GB", desc: "High accuracy" },
-    { value: "large-v3", label: "Large v3", size: "3.1 GB", desc: "Best accuracy" },
-  ];
 
   const languages = [
     { value: "auto", label: "Auto-detect" },
@@ -82,35 +101,46 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
 
         <div className="space-y-2">
           {models.map((m) => {
-            const isLoaded = loadedModel === m.value;
+            const isLoaded = loadedModel === m.name;
             return (
               <button
-                key={m.value}
-                onClick={() => setModel(m.value)}
+                key={m.name}
+                onClick={() => setModel(m.name)}
                 className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
-                  model === m.value
+                  model === m.name
                     ? "bg-accent-subtle border border-accent/30"
                     : "bg-bg-base border border-border-subtle hover:border-border-default"
                 }`}
               >
                 <div
                   className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                    model === m.value ? "border-accent" : "border-border-strong"
+                    model === m.name ? "border-accent" : "border-border-strong"
                   }`}
                 >
-                  {model === m.value && <div className="w-2 h-2 rounded-full bg-accent" />}
+                  {model === m.name && <div className="w-2 h-2 rounded-full bg-accent" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-[13px] font-medium text-text-primary">{m.label}</span>
-                    <span className="text-[11px] text-text-muted font-mono">{m.size}</span>
+                    <span className="text-[11px] text-text-muted font-mono">
+                      {formatSize(m.size_mb)}
+                    </span>
+                    <span
+                      className={`text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${
+                        m.engine === "sherpa"
+                          ? "bg-accent-subtle text-accent"
+                          : "bg-bg-surface text-text-muted border border-border-subtle"
+                      }`}
+                    >
+                      {m.engine}
+                    </span>
                     {isLoaded && (
                       <span className="text-[10px] font-medium uppercase text-success bg-success-subtle px-1.5 py-0.5 rounded">
                         Loaded
                       </span>
                     )}
                   </div>
-                  <span className="text-[12px] text-text-secondary">{m.desc}</span>
+                  <span className="text-[12px] text-text-secondary">{m.description}</span>
                 </div>
               </button>
             );
@@ -128,6 +158,12 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
             </option>
           ))}
         </select>
+        {selectedEngine === "sherpa" && (
+          <p className="text-[11px] text-text-muted mt-2">
+            Parakeet and SenseVoice auto-detect the language. Canary uses this setting (en, es, de,
+            fr).
+          </p>
+        )}
       </div>
 
       {/* Performance */}
@@ -152,19 +188,31 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-bg-base rounded-lg border border-border-subtle">
+          <div
+            className={`flex items-center justify-between p-3 bg-bg-base rounded-lg border border-border-subtle ${
+              gpuDisabled ? "opacity-60" : ""
+            }`}
+          >
             <div className="flex items-center gap-2">
-              <Zap size={14} className="text-text-muted" />
+              {gpuDisabled ? (
+                <Cpu size={14} className="text-text-muted" />
+              ) : (
+                <Zap size={14} className="text-text-muted" />
+              )}
               <div>
                 <span className="text-[13px] text-text-primary">GPU Acceleration</span>
-                <p className="text-[11px] text-text-muted">CUDA / Vulkan / Metal</p>
+                <p className="text-[11px] text-text-muted">
+                  {gpuDisabled
+                    ? "Sherpa models run on CPU only"
+                    : "CUDA / Vulkan / Metal (Whisper)"}
+                </p>
               </div>
             </div>
             <div
-              className={`toggle-switch ${gpu ? "active" : ""}`}
-              onClick={() => setGpu(!gpu)}
+              className={`toggle-switch ${gpu && !gpuDisabled ? "active" : ""}`}
+              onClick={() => !gpuDisabled && setGpu(!gpu)}
               role="switch"
-              aria-checked={gpu}
+              aria-checked={gpu && !gpuDisabled}
             />
           </div>
         </div>

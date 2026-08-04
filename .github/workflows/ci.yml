@@ -153,6 +153,8 @@ jobs:
     name: Tauri Build
     runs-on: ubuntu-latest
     needs: [lint, typecheck, rust-clippy, rust-test, rust-check]
+    env:
+      NO_STRIP: "1"
     steps:
       - uses: actions/checkout@v4
       - name: Install system dependencies

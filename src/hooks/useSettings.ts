@@ -13,6 +13,7 @@ export interface AppConfig {
     language: string;
     threads: number;
     gpu: boolean;
+    engine: string;
   };
   overlay: {
     x: number;

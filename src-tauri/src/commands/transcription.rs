@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use tauri::State;
-use crate::whisper::WhisperEngine;
+use crate::asr::AsrEngine;
 use crate::whisper::TranscriptionParams;
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -21,12 +21,12 @@ pub async fn transcribe_audio(
     audio_data: Vec<f32>,
     language: Option<String>,
     threads: Option<u32>,
-    state: State<'_, Arc<Mutex<WhisperEngine>>>,
+    state: State<'_, Arc<Mutex<AsrEngine>>>,
 ) -> Result<TranscriptionResult, String> {
-    let engine = state.lock().map_err(|e| e.to_string())?;
+    let mut engine = state.lock().map_err(|e| e.to_string())?;
 
     if !engine.is_loaded() {
-        return Err("Whisper model not loaded".to_string());
+        return Err("ASR model not loaded".to_string());
     }
 
     let params = TranscriptionParams {

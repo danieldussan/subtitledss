@@ -1,6 +1,6 @@
 # Maintainer: ddussan <ddussan@github.com>
 pkgname=subtitledss
-pkgver=0.1.0
+pkgver=1.3.0
 pkgrel=1
 pkgdesc="Real-time subtitle overlay for Linux, powered by Whisper"
 arch=('x86_64')
@@ -32,6 +32,9 @@ build() {
   # Install frontend dependencies
   bun install --frozen-lockfile
 
+  # Build frontend (embedded into the binary at compile time)
+  bun run build
+
   # Detect GPU and build with appropriate features
   local features=""
   if command -v nvcc &> /dev/null; then
@@ -54,6 +57,12 @@ package() {
 
   # Install binary
   install -Dm755 "src-tauri/target/release/subtitledss" "$pkgdir/usr/bin/$pkgname"
+
+  # Install sherpa-onnx runtime libraries (the binary links them via RPATH
+  # $ORIGIN/../lib/subtitledss, set in src-tauri/.cargo/config.toml)
+  install -Dm755 "src-tauri/vendor/sherpa/libsherpa-onnx-c-api.so" "$pkgdir/usr/lib/subtitledss/"
+  install -Dm755 "src-tauri/vendor/sherpa/libsherpa-onnx-cxx-api.so" "$pkgdir/usr/lib/subtitledss/"
+  install -Dm755 "src-tauri/vendor/sherpa/libonnxruntime.so" "$pkgdir/usr/lib/subtitledss/"
 
   # Install desktop file
   install -Dm644 "aur/subtitledss.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"

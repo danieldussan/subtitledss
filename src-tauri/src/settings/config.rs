@@ -28,6 +28,12 @@ pub struct WhisperConfig {
     pub language: String,
     pub threads: u32,
     pub gpu: bool,
+    #[serde(default = "default_whisper_engine")]
+    pub engine: String,
+}
+
+fn default_whisper_engine() -> String {
+    "whisper".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -89,6 +95,7 @@ impl Default for AppConfig {
                 language: "auto".to_string(),
                 threads: 4,
                 gpu: false,
+                engine: "whisper".to_string(),
             },
             overlay: OverlayConfig {
                 x: 100,
@@ -219,6 +226,7 @@ mod tests {
         assert_eq!(config.whisper.language, "auto");
         assert_eq!(config.whisper.threads, 4);
         assert!(!config.whisper.gpu);
+        assert_eq!(config.whisper.engine, "whisper");
     }
 
     #[test]
@@ -292,6 +300,7 @@ model = \"tiny\"\n\
 language = \"es\"\n\
 threads = 8\n\
 gpu = true\n\
+engine = \"sherpa\"\n\
 \n\
 [overlay]\n\
 x = 200\n\
@@ -338,6 +347,7 @@ model = \"llama3.2\"\n";
         assert_eq!(config.whisper.language, "es");
         assert_eq!(config.whisper.threads, 8);
         assert!(config.whisper.gpu);
+        assert_eq!(config.whisper.engine, "sherpa");
         assert_eq!(config.overlay.x, 200);
         assert_eq!(config.overlay.y, 300);
         assert!(!config.overlay.always_on_top);
@@ -431,6 +441,61 @@ source = "microphone"
 "#;
         let result: Result<AppConfig, _> = toml::from_str(partial);
         assert!(result.is_err()); // Missing required fields
+    }
+
+    #[test]
+    fn test_whisper_engine_defaults_to_whisper_when_missing() {
+        let toml_str = "\
+[audio]\n\
+source = \"system\"\n\
+device = \"default\"\n\
+sample_rate = 16000\n\
+vad_threshold = 0.005\n\
+\n\
+[whisper]\n\
+model = \"tiny\"\n\
+language = \"auto\"\n\
+threads = 4\n\
+gpu = false\n\
+\n\
+[overlay]\n\
+x = 100\n\
+y = 500\n\
+width = 600\n\
+height = 100\n\
+opacity = 0.9\n\
+always_on_top = true\n\
+click_through = false\n\
+font_size = 24\n\
+font_color = \"#ffffff\"\n\
+background_color = \"#00000080\"\n\
+auto_hide = true\n\
+auto_hide_delay = 5000\n\
+display_duration_ms = 10000\n\
+fade_duration_ms = 3000\n\
+max_visible_lines = 4\n\
+line_gap = 4\n\
+max_line_width = 80\n\
+\n\
+[translation]\n\
+enabled = false\n\
+source_lang = \"en\"\n\
+target_lang = \"es\"\n\
+show_original = true\n\
+\n\
+[shortcuts]\n\
+toggle_capture = \"Ctrl+Shift+S\"\n\
+toggle_overlay = \"Ctrl+Shift+O\"\n\
+toggle_translation = \"Ctrl+Shift+T\"\n\
+clear_history = \"Ctrl+Shift+H\"\n\
+\n\
+[ai]\n\
+provider = \"Ollama\"\n\
+base_url = \"http://localhost:11434/v1\"\n\
+api_key = \"ollama\"\n\
+model = \"llama3.2\"\n";
+        let config: AppConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.whisper.engine, "whisper");
     }
 
     #[test]

@@ -1,3 +1,4 @@
+pub mod asr;
 pub mod audio;
 pub mod commands;
 pub mod history;
@@ -5,6 +6,7 @@ pub mod models;
 pub mod overlay;
 pub mod pipeline;
 pub mod settings;
+pub mod sherpa;
 pub mod translation;
 pub mod vad;
 pub mod whisper;
@@ -17,7 +19,7 @@ use tauri::Manager;
 use tauri::Emitter;
 use tauri::Listener;
 use settings::AppConfig;
-use whisper::WhisperEngine;
+use asr::{AsrEngine, EngineKind};
 use history::HistoryDb;
 use overlay::{OverlayManager, OverlayConfig};
 use audio::{AudioCapture, RingBuffer};
@@ -49,7 +51,9 @@ pub fn run() {
         config.shortcuts.toggle_translation = "Cmd+Shift+T".to_string();
     }
 
-    let whisper_engine = Arc::new(Mutex::new(WhisperEngine::new()));
+    let asr_engine = Arc::new(Mutex::new(AsrEngine::new(EngineKind::from_str(
+        &config.whisper.engine,
+    ))));
     let overlay_config = OverlayConfig {
         x: config.overlay.x,
         y: config.overlay.y,
@@ -104,7 +108,7 @@ pub fn run() {
 
     let video_transcription_state = VideoTranscriptionState {
         db: history_db.clone(),
-        whisper: whisper_engine.clone(),
+        asr: asr_engine.clone(),
         diarization: diarization_engine,
     };
 
@@ -127,7 +131,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
-        .manage(whisper_engine)
+        .manage(asr_engine)
         .manage(overlay_manager)
         .manage(history_db)
         .manage(config_arc)
@@ -152,6 +156,7 @@ pub fn run() {
             commands::capture::start_capture,
             commands::capture::stop_capture,
             commands::capture::get_audio_level,
+            commands::models::list_available_models,
             commands::models::download_model,
             commands::models::delete_model,
             commands::models::list_downloaded_models,
@@ -182,29 +187,48 @@ pub fn run() {
             ai::commands::ai_translate_text,
         ])
         .setup(|app| {
-            // Auto-load whisper model if configured
+            // Auto-load ASR model if configured
             let config = {
                 let cfg = app.state::<Arc<Mutex<AppConfig>>>();
                 let cfg = cfg.lock().unwrap();
                 cfg.clone()
             };
 
-            let model_name = &config.whisper.model;
+            let model_name = config.whisper.model.clone();
+            let engine_kind = EngineKind::from_str(&config.whisper.engine);
             let models_dir = dirs::data_dir()
                 .unwrap_or_else(|| std::path::PathBuf::from("."))
                 .join("subtitledss")
                 .join("models");
-            let model_path = models_dir.join(format!("ggml-{}.bin", model_name));
+
+            let model_path = if engine_kind == EngineKind::Sherpa {
+                models_dir.join("sherpa").join(&model_name)
+            } else {
+                models_dir.join(format!("ggml-{}.bin", model_name))
+            };
 
             if model_path.exists() {
-                let whisper = app.state::<Arc<Mutex<WhisperEngine>>>();
-                let mut engine = whisper.lock().unwrap();
+                let asr = app.state::<Arc<Mutex<AsrEngine>>>();
+                let mut engine = asr.lock().unwrap();
                 match engine.load_model(&model_path) {
-                    Ok(()) => tracing::info!("Auto-loaded Whisper model: {}", model_name),
-                    Err(e) => tracing::error!("Failed to load model {}: {}", model_name, e),
+                    Ok(()) => tracing::info!(
+                        "Auto-loaded {} model: {}",
+                        engine_kind.as_str(),
+                        model_name
+                    ),
+                    Err(e) => tracing::error!(
+                        "Failed to load {} model {}: {}",
+                        engine_kind.as_str(),
+                        model_name,
+                        e
+                    ),
                 }
             } else {
-                tracing::info!("Model '{}' not found at {:?}, skipping auto-load", model_name, model_path);
+                tracing::info!(
+                    "Model '{}' not found at {:?}, skipping auto-load",
+                    model_name,
+                    model_path
+                );
             }
 
             // Initialize video transcriptions table

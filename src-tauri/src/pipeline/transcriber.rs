@@ -4,11 +4,11 @@ use tokio::task::JoinHandle;
 use tauri::Emitter;
 use tracing::{info, warn};
 
+use crate::asr::AsrEngine;
 use crate::audio::buffer::RingBuffer;
 use crate::audio::capture::SAMPLES_PUSHED;
 use crate::history::HistoryDb;
 use crate::settings::config::AppConfig;
-use crate::whisper::engine::WhisperEngine;
 use crate::whisper::params::TranscriptionParams;
 use crate::translation::marian::MarianEngine;
 
@@ -33,7 +33,7 @@ impl TranscriptionPipeline {
     pub fn start(
         &mut self,
         buffer: Arc<Mutex<RingBuffer>>,
-        engine: Arc<Mutex<WhisperEngine>>,
+        engine: Arc<Mutex<AsrEngine>>,
         history_db: Arc<Mutex<HistoryDb>>,
         app_handle: tauri::AppHandle,
         config: AppConfig,
@@ -138,7 +138,7 @@ impl TranscriptionPipeline {
                 // Transcribe — do NOT hold any other lock while transcribing
                 let start_time = std::time::Instant::now();
                 let segments = {
-                    let eng = match engine.lock() {
+                    let mut eng = match engine.lock() {
                         Ok(e) => e,
                         Err(_) => continue,
                     };

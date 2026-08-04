@@ -1,10 +1,10 @@
 use std::sync::{Arc, Mutex, atomic::{AtomicU32, AtomicUsize}};
 use tauri::State;
 use tauri::Emitter;
+use crate::asr::AsrEngine;
 use crate::audio::{AudioCapture, RingBuffer};
 use crate::audio::capture::AUDIO_LEVEL;
 use crate::history::HistoryDb;
-use crate::whisper::WhisperEngine;
 use crate::pipeline::TranscriptionPipeline;
 use crate::settings::AppConfig;
 use crate::translation::marian::MarianEngine;
@@ -14,7 +14,7 @@ use tracing::{info, error};
 pub async fn start_capture(
     audio_capture: State<'_, Arc<Mutex<AudioCapture>>>,
     audio_buffer: State<'_, Arc<Mutex<RingBuffer>>>,
-    whisper_engine: State<'_, Arc<Mutex<WhisperEngine>>>,
+    asr_engine: State<'_, Arc<Mutex<AsrEngine>>>,
     pipeline: State<'_, Arc<Mutex<TranscriptionPipeline>>>,
     history_db: State<'_, Arc<Mutex<HistoryDb>>>,
     config: State<'_, Arc<Mutex<AppConfig>>>,
@@ -25,14 +25,14 @@ pub async fn start_capture(
 ) -> Result<String, String> {
     info!("Starting capture...");
 
-    // Check if whisper model is loaded
+    // Check if ASR model is loaded
     {
-        let whisper = whisper_engine.lock().map_err(|e| e.to_string())?;
-        if !whisper.is_loaded() {
-            error!("Whisper model not loaded!");
-            return Err("Whisper model not loaded. Download and load a model first.".to_string());
+        let asr = asr_engine.lock().map_err(|e| e.to_string())?;
+        if !asr.is_loaded() {
+            error!("ASR model not loaded!");
+            return Err("ASR model not loaded. Download and load a model first.".to_string());
         }
-        info!("Whisper model is loaded");
+        info!("ASR model is loaded");
     }
 
     // Start audio capture
@@ -81,7 +81,7 @@ pub async fn start_capture(
         let mut pipe = pipeline.lock().map_err(|e| e.to_string())?;
         pipe.start(
             audio_buffer.inner().clone(),
-            whisper_engine.inner().clone(),
+            asr_engine.inner().clone(),
             history_db.inner().clone(),
             app_handle.clone(),
             pipeline_config,

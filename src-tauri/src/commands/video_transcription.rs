@@ -4,11 +4,11 @@ use std::sync::{Arc, Mutex};
 use tauri::{Emitter, State};
 use tracing::{info, warn};
 
+use crate::asr::AsrEngine;
 use crate::commands::export::{ExportEntry, ExportFormat, export_entries};
 use crate::diarization::engine::DiarizationEngine;
 use crate::history::HistoryDb;
 use crate::video::processor::VideoProcessor;
-use crate::whisper::engine::WhisperEngine;
 use crate::whisper::params::TranscriptionParams;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,7 +47,7 @@ pub struct VideoTranscriptionEntry {
 
 pub struct VideoTranscriptionState {
     pub db: Arc<Mutex<HistoryDb>>,
-    pub whisper: Arc<Mutex<WhisperEngine>>,
+    pub asr: Arc<Mutex<AsrEngine>>,
     pub diarization: Arc<Mutex<DiarizationEngine>>,
 }
 
@@ -125,7 +125,7 @@ pub async fn transcribe_video(
         None
     };
 
-    // Step 4: Transcribe with Whisper
+    // Step 4: Transcribe with ASR engine
     let _ = app_handle.emit("video-transcription-progress", serde_json::json!({
         "step": "transcribing",
         "progress": 0.0,
@@ -136,9 +136,9 @@ pub async fn transcribe_video(
     let audio_data = read_wav_to_f32(&audio_path).map_err(|e| format!("Failed to read audio: {}", e))?;
 
     let segments = {
-        let engine = state.whisper.lock().unwrap();
+        let mut engine = state.asr.lock().unwrap();
         if !engine.is_loaded() {
-            return Err("Whisper model not loaded".to_string());
+            return Err("ASR model not loaded".to_string());
         }
 
         let params = TranscriptionParams {
