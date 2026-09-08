@@ -1,8 +1,8 @@
-use tauri::{Emitter, State};
 use std::sync::{Arc, Mutex};
+use tauri::{Emitter, State};
 
 use super::config::{AiConfig, AiProviderInfo, ChatMessage};
-use super::provider::{create_provider};
+use super::provider::create_provider;
 
 #[tauri::command]
 pub async fn list_ai_providers() -> Result<Vec<AiProviderInfo>, String> {
@@ -70,9 +70,17 @@ pub async fn test_ai_connection(config: AiConfig) -> Result<String, String> {
         Ok(resp) => {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
-            Err(format!("HTTP {} from {}: {}", status, native_url, body.chars().take(300).collect::<String>()))
+            Err(format!(
+                "HTTP {} from {}: {}",
+                status,
+                native_url,
+                body.chars().take(300).collect::<String>()
+            ))
         }
-        Err(e) => Err(format!("Connection failed: tried {} and {} — {}", openai_url, native_url, e)),
+        Err(e) => Err(format!(
+            "Connection failed: tried {} and {} — {}",
+            openai_url, native_url, e
+        )),
     }
 }
 
@@ -213,9 +221,12 @@ pub async fn ai_chat_stream_start(
 
     tokio::spawn(async move {
         while let Some(token) = rx.recv().await {
-            let _ = app_handle.emit("ai-chat-token", serde_json::json!({
-                "token": token,
-            }));
+            let _ = app_handle.emit(
+                "ai-chat-token",
+                serde_json::json!({
+                    "token": token,
+                }),
+            );
         }
         let _ = app_handle.emit("ai-chat-done", ());
     });

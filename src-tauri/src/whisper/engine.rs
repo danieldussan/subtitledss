@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 use tracing::info;
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
 
 use crate::asr::engine::TranscriptionSegment;
 
@@ -30,11 +30,8 @@ impl WhisperEngine {
         let mut ctx_params = WhisperContextParameters::default();
         ctx_params.use_gpu(gpu);
 
-        let ctx = WhisperContext::new_with_params(
-            model_path.to_str().unwrap(),
-            ctx_params,
-        )
-        .map_err(|e| anyhow::anyhow!("Failed to load model: {}", e))?;
+        let ctx = WhisperContext::new_with_params(model_path.to_str().unwrap(), ctx_params)
+            .map_err(|e| anyhow::anyhow!("Failed to load model: {}", e))?;
 
         self.context = Some(Arc::new(ctx));
         self.model_path = Some(model_path.to_path_buf());

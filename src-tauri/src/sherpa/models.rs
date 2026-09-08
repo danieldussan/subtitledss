@@ -214,10 +214,7 @@ mod tests {
     fn model_dir_layout() {
         let dir = temp_dir();
         let path = SherpaModelInfo::model_dir(&dir, "canary-1b-v2-int8");
-        assert_eq!(
-            path,
-            dir.join("sherpa").join("canary-1b-v2-int8")
-        );
+        assert_eq!(path, dir.join("sherpa").join("canary-1b-v2-int8"));
         fs::remove_dir_all(&dir).ok();
     }
 

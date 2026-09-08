@@ -14,8 +14,8 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use subtitledss_lib::sherpa::SherpaEngine;
-use subtitledss_lib::whisper::WhisperEngine;
 use subtitledss_lib::whisper::params::TranscriptionParams;
+use subtitledss_lib::whisper::WhisperEngine;
 
 const SAMPLE_RATE: usize = 16000;
 /// 1.5 s at 16 kHz — mirrors CHUNK_SAMPLES in the live pipeline.

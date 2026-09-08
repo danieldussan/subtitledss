@@ -1,6 +1,6 @@
-use rusqlite::params;
 use super::db::HistoryDb;
 use super::db::HistoryEntry;
+use rusqlite::params;
 
 pub struct SearchResult {
     pub entries: Vec<HistoryEntry>,

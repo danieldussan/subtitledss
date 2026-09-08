@@ -195,7 +195,10 @@ mod tests {
         let silence = vec![0.0; 1600];
         for _ in 0..2 {
             vad.detect(&silence);
-            assert!(vad.is_speaking, "Should still be speaking during silence ramp");
+            assert!(
+                vad.is_speaking,
+                "Should still be speaking during silence ramp"
+            );
         }
     }
 
@@ -212,7 +215,10 @@ mod tests {
         for _ in 0..3 {
             vad.detect(&silence);
         }
-        assert!(!vad.is_speaking, "Should stop speaking after enough silence");
+        assert!(
+            !vad.is_speaking,
+            "Should stop speaking after enough silence"
+        );
     }
 
     #[test]

@@ -109,7 +109,10 @@ impl MarianModelManager {
         let model_path = pair_dir.join("model.safetensors");
         if !model_path.exists() {
             let (owner, name) = MarianModelInfo::parse_repo(&info.model_repo);
-            info!("  Downloading model.safetensors from {}...", info.model_repo);
+            info!(
+                "  Downloading model.safetensors from {}...",
+                info.model_repo
+            );
             let repo = client.model(owner, name);
             repo.download_file()
                 .filename("model.safetensors")
@@ -193,7 +196,11 @@ impl MarianModelManager {
     pub fn size_bytes(&self, pair: &str) -> u64 {
         let dir = self.pair_dir(pair);
         let mut total = 0;
-        for name in &["model.safetensors", "src_tokenizer.json", "tgt_tokenizer.json"] {
+        for name in &[
+            "model.safetensors",
+            "src_tokenizer.json",
+            "tgt_tokenizer.json",
+        ] {
             let path = dir.join(name);
             if let Ok(meta) = std::fs::metadata(&path) {
                 total += meta.len();
@@ -212,11 +219,8 @@ mod tests {
 
     fn temp_manager() -> MarianModelManager {
         let id = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let dir = std::env::temp_dir().join(format!(
-            "marian_model_test_{}_{:?}",
-            std::process::id(),
-            id
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("marian_model_test_{}_{:?}", std::process::id(), id));
         MarianModelManager::new(dir)
     }
 

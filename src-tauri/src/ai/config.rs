@@ -157,7 +157,11 @@ mod tests {
     fn test_provider_info_list() {
         let providers = AiProviderInfo::list();
         assert_eq!(providers.len(), 3);
-        assert!(providers.iter().any(|p| p.provider_type == AiProviderType::Ollama));
-        assert!(providers.iter().any(|p| p.provider_type == AiProviderType::DeepSeek));
+        assert!(providers
+            .iter()
+            .any(|p| p.provider_type == AiProviderType::Ollama));
+        assert!(providers
+            .iter()
+            .any(|p| p.provider_type == AiProviderType::DeepSeek));
     }
 }

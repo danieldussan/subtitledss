@@ -1,14 +1,12 @@
-use crate::settings::AppConfig;
-use crate::audio::capture::AudioDeviceInfo;
 use crate::ai::config::{AiConfig, AiProviderType};
+use crate::audio::capture::AudioDeviceInfo;
+use crate::settings::AppConfig;
 use std::sync::{Arc, Mutex};
 use tauri::Emitter;
 use tauri::State;
 
 #[tauri::command]
-pub async fn get_config(
-    state: State<'_, Arc<Mutex<AppConfig>>>,
-) -> Result<AppConfig, String> {
+pub async fn get_config(state: State<'_, Arc<Mutex<AppConfig>>>) -> Result<AppConfig, String> {
     let config = state.lock().map_err(|e| e.to_string())?;
     Ok(config.clone())
 }
@@ -40,15 +38,18 @@ pub async fn save_config(
         };
     }
 
-    let _ = app_handle.emit("overlay-config-updated", serde_json::json!({
-        "fontSize": config.overlay.font_size,
-        "showOriginal": config.translation.show_original,
-        "maxVisibleLines": config.overlay.max_visible_lines,
-        "lineGap": config.overlay.line_gap,
-        "maxLineWidth": config.overlay.max_line_width,
-        "displayDurationMs": config.overlay.display_duration_ms,
-        "fadeDurationMs": config.overlay.fade_duration_ms,
-    }));
+    let _ = app_handle.emit(
+        "overlay-config-updated",
+        serde_json::json!({
+            "fontSize": config.overlay.font_size,
+            "showOriginal": config.translation.show_original,
+            "maxVisibleLines": config.overlay.max_visible_lines,
+            "lineGap": config.overlay.line_gap,
+            "maxLineWidth": config.overlay.max_line_width,
+            "displayDurationMs": config.overlay.display_duration_ms,
+            "fadeDurationMs": config.overlay.fade_duration_ms,
+        }),
+    );
 
     Ok(())
 }
@@ -61,11 +62,19 @@ pub async fn list_audio_devices() -> Result<Vec<AudioDeviceInfo>, String> {
 #[tauri::command]
 pub fn get_platform() -> String {
     #[cfg(target_os = "macos")]
-    { "macos".to_string() }
+    {
+        "macos".to_string()
+    }
     #[cfg(target_os = "linux")]
-    { "linux".to_string() }
+    {
+        "linux".to_string()
+    }
     #[cfg(target_os = "windows")]
-    { "windows".to_string() }
+    {
+        "windows".to_string()
+    }
     #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-    { "unknown".to_string() }
+    {
+        "unknown".to_string()
+    }
 }

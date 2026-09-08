@@ -116,7 +116,10 @@ impl OpenAiCompatibleProvider {
     }
 
     fn chat_url(&self) -> String {
-        format!("{}/chat/completions", self.config.base_url.trim_end_matches('/'))
+        format!(
+            "{}/chat/completions",
+            self.config.base_url.trim_end_matches('/')
+        )
     }
 
     fn add_auth(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {

@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use crate::ct2::engine::Ctranslate2Engine;
 use crate::sherpa::engine::SherpaEngine;
 use crate::whisper::engine::WhisperEngine;
 use crate::whisper::params::TranscriptionParams;
@@ -15,6 +16,7 @@ pub struct TranscriptionSegment {
 pub enum EngineKind {
     Whisper,
     Sherpa,
+    Ctranslate2,
 }
 
 impl EngineKind {
@@ -22,23 +24,26 @@ impl EngineKind {
         match self {
             EngineKind::Whisper => "whisper",
             EngineKind::Sherpa => "sherpa",
+            EngineKind::Ctranslate2 => "ctranslate2",
         }
     }
 
     pub fn from_str(s: &str) -> Self {
         match s {
             "sherpa" => EngineKind::Sherpa,
+            "ct2" | "ctranslate2" => EngineKind::Ctranslate2,
             _ => EngineKind::Whisper,
         }
     }
 }
 
-/// Unified ASR engine. Wraps either whisper.cpp (WhisperEngine) or
-/// sherpa-onnx (SherpaEngine) behind a single API so the rest of the app
-/// does not need to know which backend is active.
+/// Unified ASR engine. Wraps whisper.cpp (WhisperEngine), sherpa-onnx
+/// (SherpaEngine) or CTranslate2 (Ctranslate2Engine) behind a single API so
+/// the rest of the app does not need to know which backend is active.
 pub enum AsrEngine {
     Whisper(WhisperEngine),
     Sherpa(SherpaEngine),
+    Ctranslate2(Ctranslate2Engine),
 }
 
 impl AsrEngine {
@@ -46,6 +51,7 @@ impl AsrEngine {
         match kind {
             EngineKind::Whisper => AsrEngine::Whisper(WhisperEngine::new()),
             EngineKind::Sherpa => AsrEngine::Sherpa(SherpaEngine::new()),
+            EngineKind::Ctranslate2 => AsrEngine::Ctranslate2(Ctranslate2Engine::new()),
         }
     }
 
@@ -53,6 +59,7 @@ impl AsrEngine {
         match self {
             AsrEngine::Whisper(_) => EngineKind::Whisper,
             AsrEngine::Sherpa(_) => EngineKind::Sherpa,
+            AsrEngine::Ctranslate2(_) => EngineKind::Ctranslate2,
         }
     }
 
@@ -71,6 +78,15 @@ impl AsrEngine {
         match self {
             AsrEngine::Whisper(e) => e.load_model(model_path, gpu),
             AsrEngine::Sherpa(e) => e.load_model(model_path, gpu),
+            AsrEngine::Ctranslate2(e) => e.load_model(model_path, gpu),
+        }
+    }
+
+    /// Forward the desired compute type to the CTranslate2 engine (no-op for
+    /// the other backends).
+    pub fn set_compute_type(&mut self, compute_type: &str) {
+        if let AsrEngine::Ctranslate2(e) = self {
+            e.set_compute_type(compute_type.to_string());
         }
     }
 
@@ -82,6 +98,7 @@ impl AsrEngine {
         match self {
             AsrEngine::Whisper(e) => e.transcribe(audio, params),
             AsrEngine::Sherpa(e) => e.transcribe(audio, params),
+            AsrEngine::Ctranslate2(e) => e.transcribe(audio, params),
         }
     }
 
@@ -89,6 +106,7 @@ impl AsrEngine {
         match self {
             AsrEngine::Whisper(e) => e.is_loaded(),
             AsrEngine::Sherpa(e) => e.is_loaded(),
+            AsrEngine::Ctranslate2(e) => e.is_loaded(),
         }
     }
 
@@ -96,6 +114,7 @@ impl AsrEngine {
         match self {
             AsrEngine::Whisper(e) => e.model_path().map(PathBuf::clone),
             AsrEngine::Sherpa(e) => e.model_path(),
+            AsrEngine::Ctranslate2(e) => e.model_path(),
         }
     }
 
@@ -107,6 +126,7 @@ impl AsrEngine {
                     .map(|s| s.strip_prefix("ggml-").unwrap_or(s).to_string())
             }),
             AsrEngine::Sherpa(e) => e.model_name(),
+            AsrEngine::Ctranslate2(e) => e.model_name(),
         }
     }
 }

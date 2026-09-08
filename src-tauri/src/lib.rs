@@ -1,33 +1,38 @@
+pub mod ai;
 pub mod asr;
 pub mod audio;
 pub mod commands;
+pub mod ct2;
+pub mod diarization;
 pub mod history;
 pub mod models;
 pub mod overlay;
 pub mod pipeline;
 pub mod settings;
 pub mod sherpa;
+pub mod transcription;
 pub mod translation;
 pub mod vad;
-pub mod whisper;
 pub mod video;
-pub mod ai;
-pub mod diarization;
+pub mod whisper;
 
-use std::sync::{Arc, Mutex, atomic::{AtomicU32, AtomicUsize}};
-use tauri::Manager;
-use tauri::Emitter;
-use tauri::Listener;
-use settings::AppConfig;
 use asr::{AsrEngine, EngineKind};
-use history::HistoryDb;
-use overlay::{OverlayManager, OverlayConfig};
 use audio::{AudioCapture, RingBuffer};
-use whisper::model::ModelManager;
-use pipeline::TranscriptionPipeline;
-use translation::marian::MarianEngine;
 use commands::video_transcription::VideoTranscriptionState;
 use diarization::engine::DiarizationEngine;
+use history::HistoryDb;
+use overlay::{OverlayConfig, OverlayManager};
+use pipeline::TranscriptionPipeline;
+use settings::AppConfig;
+use std::sync::{
+    atomic::{AtomicU32, AtomicUsize},
+    Arc, Mutex,
+};
+use tauri::Emitter;
+use tauri::Listener;
+use tauri::Manager;
+use translation::marian::MarianEngine;
+use whisper::model::ModelManager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -201,21 +206,20 @@ pub fn run() {
                 .join("subtitledss")
                 .join("models");
 
-            let model_path = if engine_kind == EngineKind::Sherpa {
-                models_dir.join("sherpa").join(&model_name)
-            } else {
-                models_dir.join(format!("ggml-{}.bin", model_name))
+            let model_path = match engine_kind {
+                EngineKind::Sherpa => models_dir.join("sherpa").join(&model_name),
+                EngineKind::Ctranslate2 => models_dir.join("ct2").join(&model_name),
+                EngineKind::Whisper => models_dir.join(format!("ggml-{}.bin", model_name)),
             };
 
             if model_path.exists() {
                 let asr = app.state::<Arc<Mutex<AsrEngine>>>();
                 let mut engine = asr.lock().unwrap();
+                engine.set_compute_type(&config.whisper.compute_type);
                 match engine.load_model(&model_path, config.whisper.gpu) {
-                    Ok(()) => tracing::info!(
-                        "Auto-loaded {} model: {}",
-                        engine_kind.as_str(),
-                        model_name
-                    ),
+                    Ok(()) => {
+                        tracing::info!("Auto-loaded {} model: {}", engine_kind.as_str(), model_name)
+                    }
                     Err(e) => tracing::error!(
                         "Failed to load {} model {}: {}",
                         engine_kind.as_str(),
@@ -246,12 +250,15 @@ pub fn run() {
             }
 
             // System tray
-            use tauri::tray::{TrayIconBuilder, TrayIconEvent};
             use tauri::menu::{Menu, MenuItem};
+            use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 
-            let start_stop = MenuItem::with_id(app, "start_stop", "Start Capture", true, None::<&str>)?;
-            let show_overlay = MenuItem::with_id(app, "show_overlay", "Show Overlay", true, None::<&str>)?;
-            let show_window = MenuItem::with_id(app, "show_window", "Show Window", true, None::<&str>)?;
+            let start_stop =
+                MenuItem::with_id(app, "start_stop", "Start Capture", true, None::<&str>)?;
+            let show_overlay =
+                MenuItem::with_id(app, "show_overlay", "Show Overlay", true, None::<&str>)?;
+            let show_window =
+                MenuItem::with_id(app, "show_window", "Show Window", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
 
             let menu = Menu::with_items(app, &[&start_stop, &show_overlay, &show_window, &quit])?;
@@ -260,57 +267,104 @@ pub fn run() {
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("subtitledss — Idle")
                 .menu(&menu)
-                .on_menu_event(move |app: &tauri::AppHandle, event: tauri::menu::MenuEvent| {
-                    let id = event.id().as_ref();
-                    match id {
-                        "start_stop" => {
-                            tracing::info!("Tray: toggle capture");
-                            let _ = app.emit("toggle-capture", ());
+                .on_menu_event(
+                    move |app: &tauri::AppHandle, event: tauri::menu::MenuEvent| {
+                        let id = event.id().as_ref();
+                        match id {
+                            "start_stop" => {
+                                tracing::info!("Tray: toggle capture");
+                                let _ = app.emit("toggle-capture", ());
+                            }
+                            "show_overlay" => {
+                                tracing::info!("Tray: toggle overlay");
+                                let _ = app.emit("toggle-overlay", ());
+                            }
+                            "show_window" => {
+                                if let Some(main) = app.get_webview_window("main") {
+                                    let _ = main.show();
+                                    let _ = main.set_focus();
+                                }
+                            }
+                            "quit" => {
+                                app.exit(0);
+                            }
+                            _ => {}
                         }
-                        "show_overlay" => {
-                            tracing::info!("Tray: toggle overlay");
-                            let _ = app.emit("toggle-overlay", ());
-                        }
-                        "show_window" => {
+                    },
+                )
+                .on_tray_icon_event(
+                    |tray: &tauri::tray::TrayIcon, event: tauri::tray::TrayIconEvent| {
+                        if let TrayIconEvent::Click {
+                            button: tauri::tray::MouseButton::Left,
+                            button_state: tauri::tray::MouseButtonState::Up,
+                            ..
+                        } = event
+                        {
+                            let app = tray.app_handle();
                             if let Some(main) = app.get_webview_window("main") {
                                 let _ = main.show();
                                 let _ = main.set_focus();
                             }
                         }
-                        "quit" => {
-                            app.exit(0);
-                        }
-                        _ => {}
-                    }
-                })
-                .on_tray_icon_event(|tray: &tauri::tray::TrayIcon, event: tauri::tray::TrayIconEvent| {
-                    if let TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, button_state: tauri::tray::MouseButtonState::Up, .. } = event {
-                        let app = tray.app_handle();
-                        if let Some(main) = app.get_webview_window("main") {
-                            let _ = main.show();
-                            let _ = main.set_focus();
-                        }
-                    }
-                })
+                    },
+                )
                 .build(app)?;
 
             // Sync tray menu with app state
             let app_handle_for_sync = app.handle().clone();
             app.listen("capture-state-changed", move |event| {
-                let capturing = event.payload()
-                    .trim_matches('"')
-                    == "true" || event.payload().contains("\"capturing\":true");
+                let capturing = event.payload().trim_matches('"') == "true"
+                    || event.payload().contains("\"capturing\":true");
 
-                let label = if capturing { "Stop Capture" } else { "Start Capture" };
-                let tooltip = if capturing { "subtitledss — Capturing" } else { "subtitledss — Idle" };
+                let label = if capturing {
+                    "Stop Capture"
+                } else {
+                    "Start Capture"
+                };
+                let tooltip = if capturing {
+                    "subtitledss — Capturing"
+                } else {
+                    "subtitledss — Idle"
+                };
 
                 if let Some(tray) = app_handle_for_sync.tray_by_id("main-tray") {
-                    if let Ok(new_menu) = Menu::with_items(&app_handle_for_sync, &[
-                        &MenuItem::with_id(&app_handle_for_sync, "start_stop", label, true, None::<&str>).unwrap(),
-                        &MenuItem::with_id(&app_handle_for_sync, "show_overlay", "Show Overlay", true, None::<&str>).unwrap(),
-                        &MenuItem::with_id(&app_handle_for_sync, "show_window", "Show Window", true, None::<&str>).unwrap(),
-                        &MenuItem::with_id(&app_handle_for_sync, "quit", "Quit", true, None::<&str>).unwrap(),
-                    ]) {
+                    if let Ok(new_menu) = Menu::with_items(
+                        &app_handle_for_sync,
+                        &[
+                            &MenuItem::with_id(
+                                &app_handle_for_sync,
+                                "start_stop",
+                                label,
+                                true,
+                                None::<&str>,
+                            )
+                            .unwrap(),
+                            &MenuItem::with_id(
+                                &app_handle_for_sync,
+                                "show_overlay",
+                                "Show Overlay",
+                                true,
+                                None::<&str>,
+                            )
+                            .unwrap(),
+                            &MenuItem::with_id(
+                                &app_handle_for_sync,
+                                "show_window",
+                                "Show Window",
+                                true,
+                                None::<&str>,
+                            )
+                            .unwrap(),
+                            &MenuItem::with_id(
+                                &app_handle_for_sync,
+                                "quit",
+                                "Quit",
+                                true,
+                                None::<&str>,
+                            )
+                            .unwrap(),
+                        ],
+                    ) {
                         let _ = tray.set_menu(Some(new_menu));
                     }
                     let _ = tray.set_tooltip(Some(tooltip));
@@ -319,55 +373,94 @@ pub fn run() {
 
             let app_handle_for_overlay = app.handle().clone();
             app.listen("overlay-state-changed", move |event| {
-                let visible = event.payload()
-                    .trim_matches('"')
-                    == "true" || event.payload().contains("\"visible\":true");
+                let visible = event.payload().trim_matches('"') == "true"
+                    || event.payload().contains("\"visible\":true");
 
-                let label = if visible { "Hide Overlay" } else { "Show Overlay" };
+                let label = if visible {
+                    "Hide Overlay"
+                } else {
+                    "Show Overlay"
+                };
 
                 if let Some(tray) = app_handle_for_overlay.tray_by_id("main-tray") {
-                    if let Ok(new_menu) = Menu::with_items(&app_handle_for_overlay, &[
-                        &MenuItem::with_id(&app_handle_for_overlay, "start_stop", "Start Capture", true, None::<&str>).unwrap(),
-                        &MenuItem::with_id(&app_handle_for_overlay, "show_overlay", label, true, None::<&str>).unwrap(),
-                        &MenuItem::with_id(&app_handle_for_overlay, "show_window", "Show Window", true, None::<&str>).unwrap(),
-                        &MenuItem::with_id(&app_handle_for_overlay, "quit", "Quit", true, None::<&str>).unwrap(),
-                    ]) {
+                    if let Ok(new_menu) = Menu::with_items(
+                        &app_handle_for_overlay,
+                        &[
+                            &MenuItem::with_id(
+                                &app_handle_for_overlay,
+                                "start_stop",
+                                "Start Capture",
+                                true,
+                                None::<&str>,
+                            )
+                            .unwrap(),
+                            &MenuItem::with_id(
+                                &app_handle_for_overlay,
+                                "show_overlay",
+                                label,
+                                true,
+                                None::<&str>,
+                            )
+                            .unwrap(),
+                            &MenuItem::with_id(
+                                &app_handle_for_overlay,
+                                "show_window",
+                                "Show Window",
+                                true,
+                                None::<&str>,
+                            )
+                            .unwrap(),
+                            &MenuItem::with_id(
+                                &app_handle_for_overlay,
+                                "quit",
+                                "Quit",
+                                true,
+                                None::<&str>,
+                            )
+                            .unwrap(),
+                        ],
+                    ) {
                         let _ = tray.set_menu(Some(new_menu));
                     }
                 }
             });
 
             // Global shortcuts
-            use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+            use tauri_plugin_global_shortcut::{
+                Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
+            };
 
             #[cfg(target_os = "macos")]
-            let modifier = Modifiers::META;  // Cmd key on macOS
+            let modifier = Modifiers::META; // Cmd key on macOS
             #[cfg(not(target_os = "macos"))]
-            let modifier = Modifiers::CONTROL;  // Ctrl key on Linux/Windows
+            let modifier = Modifiers::CONTROL; // Ctrl key on Linux/Windows
 
             let ctrl_shift_s = Shortcut::new(Some(modifier | Modifiers::SHIFT), Code::KeyS);
-            app.global_shortcut().on_shortcut(ctrl_shift_s, move |app, _shortcut, event| {
-                if event.state == ShortcutState::Pressed {
-                    tracing::info!("Global shortcut: toggle capture");
-                    let _ = app.emit("toggle-capture", ());
-                }
-            })?;
+            app.global_shortcut()
+                .on_shortcut(ctrl_shift_s, move |app, _shortcut, event| {
+                    if event.state == ShortcutState::Pressed {
+                        tracing::info!("Global shortcut: toggle capture");
+                        let _ = app.emit("toggle-capture", ());
+                    }
+                })?;
 
             let ctrl_shift_o = Shortcut::new(Some(modifier | Modifiers::SHIFT), Code::KeyO);
-            app.global_shortcut().on_shortcut(ctrl_shift_o, move |app, _shortcut, event| {
-                if event.state == ShortcutState::Pressed {
-                    tracing::info!("Global shortcut: toggle overlay");
-                    let _ = app.emit("toggle-overlay", ());
-                }
-            })?;
+            app.global_shortcut()
+                .on_shortcut(ctrl_shift_o, move |app, _shortcut, event| {
+                    if event.state == ShortcutState::Pressed {
+                        tracing::info!("Global shortcut: toggle overlay");
+                        let _ = app.emit("toggle-overlay", ());
+                    }
+                })?;
 
             let ctrl_shift_t = Shortcut::new(Some(modifier | Modifiers::SHIFT), Code::KeyT);
-            app.global_shortcut().on_shortcut(ctrl_shift_t, move |app, _shortcut, event| {
-                if event.state == ShortcutState::Pressed {
-                    tracing::info!("Global shortcut: toggle translation");
-                    let _ = app.emit("toggle-translation", ());
-                }
-            })?;
+            app.global_shortcut()
+                .on_shortcut(ctrl_shift_t, move |app, _shortcut, event| {
+                    if event.state == ShortcutState::Pressed {
+                        tracing::info!("Global shortcut: toggle translation");
+                        let _ = app.emit("toggle-translation", ());
+                    }
+                })?;
 
             Ok(())
         })

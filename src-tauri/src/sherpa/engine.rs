@@ -86,20 +86,19 @@ impl SherpaEngine {
 
         // Try requested provider; fall back to CPU if unavailable
         let mut actual_provider = provider.to_string();
-        let recognizer =
-            build_recognizer(model_path, kind, self.threads, None, provider).or_else(|e| {
+        let recognizer = build_recognizer(model_path, kind, self.threads, None, provider)
+            .or_else(|e| {
                 if provider == "cuda" {
-                    warn!(
-                        "CUDA provider unavailable ({}), falling back to CPU",
-                        e
-                    );
+                    warn!("CUDA provider unavailable ({}), falling back to CPU", e);
                     actual_provider = "cpu".to_string();
                     build_recognizer(model_path, kind, self.threads, None, "cpu")
                 } else {
                     Err(e)
                 }
             })
-            .map_err(|e| anyhow::anyhow!("Failed to create sherpa recognizer for '{}': {}", name, e))?;
+            .map_err(|e| {
+                anyhow::anyhow!("Failed to create sherpa recognizer for '{}': {}", name, e)
+            })?;
 
         self.recognizer = Some(recognizer);
         self.model_path = Some(model_path.to_path_buf());
@@ -133,7 +132,7 @@ impl SherpaEngine {
                 info!("Rebuilding Canary recognizer for language '{}'", lang);
                 let recognizer =
                     build_recognizer(model_path, kind, self.threads, Some(&lang), &self.provider)
-                    .map_err(|e| anyhow::anyhow!("Failed to reload Canary recognizer: {}", e))?;
+                        .map_err(|e| anyhow::anyhow!("Failed to reload Canary recognizer: {}", e))?;
                 self.recognizer = Some(recognizer);
                 self.canary_lang = Some(lang);
             }
@@ -258,7 +257,8 @@ fn build_recognizer(
                 language: Some("auto".to_string()),
                 use_itn: true,
             };
-            config.model_config.tokens = Some(dir.join("tokens.txt").to_string_lossy().into_owned());
+            config.model_config.tokens =
+                Some(dir.join("tokens.txt").to_string_lossy().into_owned());
         }
         SherpaModelKind::ParakeetTdt => {
             config.model_config.transducer = OfflineTransducerModelConfig {
@@ -266,7 +266,8 @@ fn build_recognizer(
                 decoder: Some(dir.join("decoder.int8.onnx").to_string_lossy().into_owned()),
                 joiner: Some(dir.join("joiner.int8.onnx").to_string_lossy().into_owned()),
             };
-            config.model_config.tokens = Some(dir.join("tokens.txt").to_string_lossy().into_owned());
+            config.model_config.tokens =
+                Some(dir.join("tokens.txt").to_string_lossy().into_owned());
             config.model_config.model_type = Some("nemo_transducer".to_string());
         }
         SherpaModelKind::Canary => {
@@ -278,10 +279,15 @@ fn build_recognizer(
                 tgt_lang: Some(lang),
                 use_pnc: true,
             };
-            config.model_config.tokens = Some(dir.join("tokens.txt").to_string_lossy().into_owned());
+            config.model_config.tokens =
+                Some(dir.join("tokens.txt").to_string_lossy().into_owned());
         }
     }
 
-    OfflineRecognizer::create(&config)
-        .ok_or_else(|| anyhow::anyhow!("OfflineRecognizer::create returned None (provider={})", provider))
+    OfflineRecognizer::create(&config).ok_or_else(|| {
+        anyhow::anyhow!(
+            "OfflineRecognizer::create returned None (provider={})",
+            provider
+        )
+    })
 }

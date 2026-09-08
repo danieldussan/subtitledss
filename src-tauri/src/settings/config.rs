@@ -30,10 +30,22 @@ pub struct WhisperConfig {
     pub gpu: bool,
     #[serde(default = "default_whisper_engine")]
     pub engine: String,
+    #[serde(default = "default_beam_size")]
+    pub beam_size: usize,
+    #[serde(default = "default_compute_type")]
+    pub compute_type: String,
 }
 
 fn default_whisper_engine() -> String {
     "whisper".to_string()
+}
+
+fn default_beam_size() -> usize {
+    5
+}
+
+fn default_compute_type() -> String {
+    "float16".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -96,6 +108,8 @@ impl Default for AppConfig {
                 threads: 4,
                 gpu: false,
                 engine: "whisper".to_string(),
+                beam_size: default_beam_size(),
+                compute_type: default_compute_type(),
             },
             overlay: OverlayConfig {
                 x: 100,

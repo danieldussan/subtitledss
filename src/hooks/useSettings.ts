@@ -14,6 +14,8 @@ export interface AppConfig {
     threads: number;
     gpu: boolean;
     engine: string;
+    compute_type: string;
+    beam_size: number;
   };
   overlay: {
     x: number;

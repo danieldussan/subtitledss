@@ -59,7 +59,7 @@ impl HistoryDb {
                 INSERT INTO history_fts(rowid, original_text, translation)
                 VALUES (new.id, new.original_text, new.translation);
             END;
-            "
+            ",
         )?;
 
         info!("History database initialized at {:?}", db_path);
@@ -168,16 +168,32 @@ impl HistoryDb {
 
         // Add columns if they don't exist (for existing databases)
         let columns: Vec<String> = {
-            let mut stmt = self.conn.prepare("PRAGMA table_info(video_transcriptions)")?;
+            let mut stmt = self
+                .conn
+                .prepare("PRAGMA table_info(video_transcriptions)")?;
             let rows = stmt.query_map([], |row| row.get::<_, String>(1))?;
             rows.filter_map(|r| r.ok()).collect()
         };
 
         if !columns.contains(&"translated_text".to_string()) {
-            self.conn.execute_batch("ALTER TABLE video_transcriptions ADD COLUMN translated_text TEXT")?;
+            self.conn.execute_batch(
+                "ALTER TABLE video_transcriptions ADD COLUMN translated_text TEXT",
+            )?;
         }
         if !columns.contains(&"target_language".to_string()) {
-            self.conn.execute_batch("ALTER TABLE video_transcriptions ADD COLUMN target_language TEXT")?;
+            self.conn.execute_batch(
+                "ALTER TABLE video_transcriptions ADD COLUMN target_language TEXT",
+            )?;
+        }
+        if !columns.contains(&"diarization_status".to_string()) {
+            self.conn.execute_batch(
+                "ALTER TABLE video_transcriptions ADD COLUMN diarization_status TEXT NOT NULL DEFAULT 'disabled'",
+            )?;
+        }
+        if !columns.contains(&"speaker_count".to_string()) {
+            self.conn.execute_batch(
+                "ALTER TABLE video_transcriptions ADD COLUMN speaker_count INTEGER NOT NULL DEFAULT 0",
+            )?;
         }
 
         info!("Video transcriptions table initialized");
@@ -194,13 +210,15 @@ impl HistoryDb {
         translated_text: Option<&str>,
         target_language: Option<&str>,
         segments: &str,
+        diarization_status: &str,
+        speaker_count: u32,
     ) -> anyhow::Result<i64> {
         let timestamp = chrono::Utc::now().to_rfc3339();
 
         self.conn.execute(
-            "INSERT INTO video_transcriptions (video_path, video_name, duration_seconds, language, full_text, translated_text, target_language, segments, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-            params![video_path, video_name, duration_seconds, language, full_text, translated_text, target_language, segments, timestamp],
+            "INSERT INTO video_transcriptions (video_path, video_name, duration_seconds, language, full_text, translated_text, target_language, segments, diarization_status, speaker_count, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            params![video_path, video_name, duration_seconds, language, full_text, translated_text, target_language, segments, diarization_status, speaker_count, timestamp],
         )?;
 
         let id = self.conn.last_insert_rowid();
@@ -208,9 +226,12 @@ impl HistoryDb {
         Ok(id)
     }
 
-    pub fn get_video_transcriptions(&self, limit: i64) -> anyhow::Result<Vec<crate::commands::video_transcription::VideoTranscriptionEntry>> {
+    pub fn get_video_transcriptions(
+        &self,
+        limit: i64,
+    ) -> anyhow::Result<Vec<crate::commands::video_transcription::VideoTranscriptionEntry>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, video_path, video_name, duration_seconds, language, full_text, translated_text, target_language, summary, segments, created_at
+            "SELECT id, video_path, video_name, duration_seconds, language, full_text, translated_text, target_language, summary, segments, created_at, diarization_status, speaker_count
              FROM video_transcriptions ORDER BY id DESC LIMIT ?1",
         )?;
 
@@ -220,7 +241,51 @@ impl HistoryDb {
                 let segments: Vec<crate::commands::video_transcription::DiarizedSegment> =
                     serde_json::from_str(&segments_str).unwrap_or_default();
 
-                Ok(crate::commands::video_transcription::VideoTranscriptionEntry {
+                let status: Option<String> = row.get(11).ok();
+                let count: Option<i64> = row.get(12).ok();
+
+                Ok(
+                    crate::commands::video_transcription::VideoTranscriptionEntry {
+                        id: row.get(0)?,
+                        video_path: row.get(1)?,
+                        video_name: row.get(2)?,
+                        duration_seconds: row.get(3)?,
+                        language: row.get(4)?,
+                        full_text: row.get(5)?,
+                        translated_text: row.get(6)?,
+                        target_language: row.get(7)?,
+                        summary: row.get(8)?,
+                        segments,
+                        created_at: row.get(10)?,
+                        diarization_status: status.unwrap_or_else(|| "disabled".to_string()),
+                        speaker_count: count.unwrap_or(0).max(0) as u32,
+                    },
+                )
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(entries)
+    }
+
+    pub fn get_video_transcription(
+        &self,
+        id: i64,
+    ) -> anyhow::Result<crate::commands::video_transcription::VideoTranscriptionEntry> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, video_path, video_name, duration_seconds, language, full_text, translated_text, target_language, summary, segments, created_at, diarization_status, speaker_count
+             FROM video_transcriptions WHERE id = ?1",
+        )?;
+
+        let entry = stmt.query_row(params![id], |row| {
+            let segments_str: String = row.get(9)?;
+            let segments: Vec<crate::commands::video_transcription::DiarizedSegment> =
+                serde_json::from_str(&segments_str).unwrap_or_default();
+
+            let status: Option<String> = row.get(11).ok();
+            let count: Option<i64> = row.get(12).ok();
+
+            Ok(
+                crate::commands::video_transcription::VideoTranscriptionEntry {
                     id: row.get(0)?,
                     video_path: row.get(1)?,
                     video_name: row.get(2)?,
@@ -232,45 +297,20 @@ impl HistoryDb {
                     summary: row.get(8)?,
                     segments,
                     created_at: row.get(10)?,
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(entries)
-    }
-
-    pub fn get_video_transcription(&self, id: i64) -> anyhow::Result<crate::commands::video_transcription::VideoTranscriptionEntry> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id, video_path, video_name, duration_seconds, language, full_text, translated_text, target_language, summary, segments, created_at
-             FROM video_transcriptions WHERE id = ?1",
-        )?;
-
-        let entry = stmt.query_row(params![id], |row| {
-            let segments_str: String = row.get(9)?;
-            let segments: Vec<crate::commands::video_transcription::DiarizedSegment> =
-                serde_json::from_str(&segments_str).unwrap_or_default();
-
-            Ok(crate::commands::video_transcription::VideoTranscriptionEntry {
-                id: row.get(0)?,
-                video_path: row.get(1)?,
-                video_name: row.get(2)?,
-                duration_seconds: row.get(3)?,
-                language: row.get(4)?,
-                full_text: row.get(5)?,
-                translated_text: row.get(6)?,
-                target_language: row.get(7)?,
-                summary: row.get(8)?,
-                segments,
-                created_at: row.get(10)?,
-            })
+                    diarization_status: status.unwrap_or_else(|| "disabled".to_string()),
+                    speaker_count: count.unwrap_or(0).max(0) as u32,
+                },
+            )
         })?;
 
         Ok(entry)
     }
 
     pub fn delete_video_transcription(&self, id: i64) -> anyhow::Result<()> {
-        self.conn
-            .execute("DELETE FROM video_transcriptions WHERE id = ?1", params![id])?;
+        self.conn.execute(
+            "DELETE FROM video_transcriptions WHERE id = ?1",
+            params![id],
+        )?;
         info!("Deleted video transcription with id: {}", id);
         Ok(())
     }
@@ -381,7 +421,8 @@ mod tests {
     fn test_get_all_with_limit() {
         let (db, dir) = test_db();
         for i in 0..10 {
-            db.insert("en", &format!("Entry {}", i), None, None).unwrap();
+            db.insert("en", &format!("Entry {}", i), None, None)
+                .unwrap();
         }
 
         let entries = db.get_all(3).unwrap();
@@ -395,7 +436,8 @@ mod tests {
     #[test]
     fn test_get_all_entry_fields() {
         let (db, dir) = test_db();
-        db.insert("es", "Hola mundo", Some("Hello world"), Some("chrome")).unwrap();
+        db.insert("es", "Hola mundo", Some("Hello world"), Some("chrome"))
+            .unwrap();
 
         let entries = db.get_all(10).unwrap();
         assert_eq!(entries.len(), 1);
@@ -504,7 +546,8 @@ mod tests {
     fn test_search_limit() {
         let (db, dir) = test_db();
         for i in 0..10 {
-            db.insert("en", &format!("test entry {}", i), None, None).unwrap();
+            db.insert("en", &format!("test entry {}", i), None, None)
+                .unwrap();
         }
 
         let result = db.search("test", 3).unwrap();

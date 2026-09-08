@@ -1,7 +1,7 @@
-use std::sync::{Arc, Mutex};
-use tauri::State;
 use crate::asr::AsrEngine;
 use crate::whisper::TranscriptionParams;
+use std::sync::{Arc, Mutex};
+use tauri::State;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct TranscriptionResult {
@@ -37,9 +37,15 @@ pub async fn transcribe_audio(
         ..Default::default()
     };
 
-    let segments = engine.transcribe(&audio_data, &params).map_err(|e| e.to_string())?;
+    let segments = engine
+        .transcribe(&audio_data, &params)
+        .map_err(|e| e.to_string())?;
 
-    let full_text = segments.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join(" ");
+    let full_text = segments
+        .iter()
+        .map(|s| s.text.as_str())
+        .collect::<Vec<_>>()
+        .join(" ");
 
     let result_segments = segments
         .iter()

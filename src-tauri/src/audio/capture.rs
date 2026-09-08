@@ -1,9 +1,12 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{SampleFormat, Stream, StreamConfig, BufferSize};
-use std::sync::{Arc, Mutex, atomic::{AtomicU32, AtomicUsize, Ordering}};
+use cpal::{BufferSize, SampleFormat, Stream, StreamConfig};
+use serde::{Deserialize, Serialize};
 use std::sync::atomic::AtomicU64;
+use std::sync::{
+    atomic::{AtomicU32, AtomicUsize, Ordering},
+    Arc, Mutex,
+};
 use tracing::{error, info};
-use serde::{Serialize, Deserialize};
 
 use super::buffer::RingBuffer;
 
@@ -96,7 +99,13 @@ impl AudioCapture {
                         sample_rate: cfg.sample_rate(),
                         kind: kind.to_string(),
                     };
-                    info!("  Device: {} [{}ch {}Hz] ({})", name, cfg.channels(), cfg.sample_rate(), kind);
+                    info!(
+                        "  Device: {} [{}ch {}Hz] ({})",
+                        name,
+                        cfg.channels(),
+                        cfg.sample_rate(),
+                        kind
+                    );
                     devices.push(info);
                 }
             }
@@ -125,7 +134,10 @@ impl AudioCapture {
                 .chain(host.output_devices()?)
                 .find(|d| {
                     let n = d.to_string();
-                    n == clean_name || n == name || clean_name.contains(&n) || n.contains(&clean_name)
+                    n == clean_name
+                        || n == name
+                        || clean_name.contains(&n)
+                        || n.contains(&clean_name)
                 })
                 .ok_or_else(|| anyhow::anyhow!("Device '{}' not found", name))?
         } else {
@@ -143,7 +155,12 @@ impl AudioCapture {
         let supported_config = device.default_input_config()?;
         let src_channels = supported_config.channels() as usize;
         let src_rate = supported_config.sample_rate();
-        info!("Device config: {} channels, {}Hz, {:?}", src_channels, src_rate, supported_config.sample_format());
+        info!(
+            "Device config: {} channels, {}Hz, {:?}",
+            src_channels,
+            src_rate,
+            supported_config.sample_format()
+        );
 
         actual_sample_rate.store(src_rate, Ordering::SeqCst);
         actual_channels.store(src_channels, Ordering::SeqCst);
@@ -203,13 +220,21 @@ impl AudioCapture {
                     None,
                 )?
             }
-            _ => return Err(anyhow::anyhow!("Unsupported sample format: {:?}", sample_format)),
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "Unsupported sample format: {:?}",
+                    sample_format
+                ))
+            }
         };
 
         stream.play()?;
         self.stream = Some(stream);
 
-        info!("Audio capture started ({}ch {}Hz → mono 16kHz)", src_channels, src_rate);
+        info!(
+            "Audio capture started ({}ch {}Hz → mono 16kHz)",
+            src_channels, src_rate
+        );
         Ok(())
     }
 

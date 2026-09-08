@@ -1,5 +1,5 @@
-use std::path::Path;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,7 +21,10 @@ impl VideoProcessor {
     pub async fn extract_audio(video_path: &Path) -> anyhow::Result<std::path::PathBuf> {
         let output_path = video_path.with_extension("wav");
 
-        info!("Extracting audio from {:?} to {:?}", video_path, output_path);
+        info!(
+            "Extracting audio from {:?} to {:?}",
+            video_path, output_path
+        );
 
         let video_str = video_path
             .to_str()
@@ -32,12 +35,17 @@ impl VideoProcessor {
 
         let output = tokio::process::Command::new("ffmpeg")
             .args([
-                "-i", video_str,
+                "-i",
+                video_str,
                 "-vn",
-                "-acodec", "pcm_s16le",
-                "-ar", "16000",
-                "-ac", "1",
-                "-y", output_str,
+                "-acodec",
+                "pcm_s16le",
+                "-ar",
+                "16000",
+                "-ac",
+                "1",
+                "-y",
+                output_str,
             ])
             .output()
             .await?;
@@ -70,7 +78,9 @@ impl VideoProcessor {
                 "format=duration",
                 "-of",
                 "csv=p=0",
-                video_path.to_str().ok_or_else(|| anyhow::anyhow!("Invalid path"))?,
+                video_path
+                    .to_str()
+                    .ok_or_else(|| anyhow::anyhow!("Invalid path"))?,
             ])
             .output()
             .await?;
@@ -96,7 +106,9 @@ impl VideoProcessor {
                 "json",
                 "-show_format",
                 "-show_streams",
-                video_path.to_str().ok_or_else(|| anyhow::anyhow!("Invalid path"))?,
+                video_path
+                    .to_str()
+                    .ok_or_else(|| anyhow::anyhow!("Invalid path"))?,
             ])
             .output()
             .await?;

@@ -6,6 +6,18 @@ pub struct TranscriptionParams {
     pub threads: u32,
     pub gpu: bool,
     pub translate: bool,
+    #[serde(default = "default_beam_size")]
+    pub beam_size: usize,
+    #[serde(default = "default_compute_type")]
+    pub compute_type: String,
+}
+
+fn default_beam_size() -> usize {
+    5
+}
+
+fn default_compute_type() -> String {
+    "float16".to_string()
 }
 
 impl Default for TranscriptionParams {
@@ -15,6 +27,8 @@ impl Default for TranscriptionParams {
             threads: 4,
             gpu: false,
             translate: false,
+            beam_size: default_beam_size(),
+            compute_type: default_compute_type(),
         }
     }
 }

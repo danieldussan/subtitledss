@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use reqwest;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
+use std::path::PathBuf;
 use tracing::info;
 
 #[derive(Debug, Clone)]
@@ -18,35 +18,40 @@ impl ModelInfo {
             Self {
                 name: "tiny".to_string(),
                 filename: "ggml-tiny.bin".to_string(),
-                url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin".to_string(),
+                url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
+                    .to_string(),
                 size_mb: 39,
                 sha256: String::new(),
             },
             Self {
                 name: "base".to_string(),
                 filename: "ggml-base.bin".to_string(),
-                url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin".to_string(),
+                url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin"
+                    .to_string(),
                 size_mb: 142,
                 sha256: String::new(),
             },
             Self {
                 name: "small".to_string(),
                 filename: "ggml-small.bin".to_string(),
-                url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin".to_string(),
+                url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
+                    .to_string(),
                 size_mb: 466,
                 sha256: String::new(),
             },
             Self {
                 name: "medium".to_string(),
                 filename: "ggml-medium.bin".to_string(),
-                url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin".to_string(),
+                url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin"
+                    .to_string(),
                 size_mb: 1500,
                 sha256: String::new(),
             },
             Self {
                 name: "large-v3".to_string(),
                 filename: "ggml-large-v3.bin".to_string(),
-                url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin".to_string(),
+                url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin"
+                    .to_string(),
                 size_mb: 3100,
                 sha256: String::new(),
             },
@@ -78,7 +83,10 @@ impl ModelDownloader {
 
         std::fs::create_dir_all(&self.models_dir)?;
 
-        info!("Downloading model '{}' ({} MB)...", model_name, model.size_mb);
+        info!(
+            "Downloading model '{}' ({} MB)...",
+            model_name, model.size_mb
+        );
 
         let client = reqwest::Client::new();
         let response = client.get(&model.url).send().await?;

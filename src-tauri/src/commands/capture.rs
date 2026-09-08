@@ -1,14 +1,17 @@
-use std::sync::{Arc, Mutex, atomic::{AtomicU32, AtomicUsize}};
-use tauri::State;
-use tauri::Emitter;
 use crate::asr::AsrEngine;
-use crate::audio::{AudioCapture, RingBuffer};
 use crate::audio::capture::AUDIO_LEVEL;
+use crate::audio::{AudioCapture, RingBuffer};
 use crate::history::HistoryDb;
 use crate::pipeline::TranscriptionPipeline;
 use crate::settings::AppConfig;
 use crate::translation::marian::MarianEngine;
-use tracing::{info, error};
+use std::sync::{
+    atomic::{AtomicU32, AtomicUsize},
+    Arc, Mutex,
+};
+use tauri::Emitter;
+use tauri::State;
+use tracing::{error, info};
 
 #[tauri::command]
 pub async fn start_capture(
@@ -38,8 +41,10 @@ pub async fn start_capture(
     // Start audio capture
     let device_name: Option<String> = {
         let cfg = config.lock().map_err(|e| e.to_string())?;
-        info!("Audio config: source={}, device={}, sample_rate={}", 
-            cfg.audio.source, cfg.audio.device, cfg.audio.sample_rate);
+        info!(
+            "Audio config: source={}, device={}, sample_rate={}",
+            cfg.audio.source, cfg.audio.device, cfg.audio.sample_rate
+        );
         if cfg.audio.device == "default" {
             None
         } else {
@@ -63,7 +68,8 @@ pub async fn start_capture(
             info!("Already capturing");
             return Ok("Already capturing".to_string());
         }
-        capture.start(buffer_arc, device_str, rate_arc, ch_arc)
+        capture
+            .start(buffer_arc, device_str, rate_arc, ch_arc)
             .map_err(|e| {
                 let msg = format!("Failed to start capture: {}", e);
                 error!("{}", msg);
@@ -91,9 +97,12 @@ pub async fn start_capture(
 
     info!("Capture + pipeline started successfully");
 
-    let _ = app_handle.emit("capture-state-changed", serde_json::json!({
-        "capturing": true,
-    }));
+    let _ = app_handle.emit(
+        "capture-state-changed",
+        serde_json::json!({
+            "capturing": true,
+        }),
+    );
 
     Ok("Capture started".to_string())
 }
@@ -119,9 +128,12 @@ pub async fn stop_capture(
     // Reset audio level
     AUDIO_LEVEL.store(0, std::sync::atomic::Ordering::Relaxed);
 
-    let _ = app_handle.emit("capture-state-changed", serde_json::json!({
-        "capturing": false,
-    }));
+    let _ = app_handle.emit(
+        "capture-state-changed",
+        serde_json::json!({
+            "capturing": false,
+        }),
+    );
 
     info!("Capture + pipeline stopped");
     Ok("Capture stopped".to_string())

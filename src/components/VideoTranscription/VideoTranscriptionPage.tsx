@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Trash2, Clock, Film } from "lucide-react";
+import { Trash2, Clock, Film, AlertTriangle } from "lucide-react";
 import { useVideoTranscription } from "../../hooks/useVideoTranscription";
 import { VideoPicker } from "./VideoPicker";
 import { ProgressIndicator } from "./ProgressIndicator";
@@ -11,6 +11,30 @@ function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+function SpeakerStatusBadge({ status, speakerCount }: { status?: string; speakerCount?: number }) {
+  const st = status || "disabled";
+  if (st === "succeeded") {
+    return (
+      <span className="text-[10px] font-medium uppercase text-success bg-success-subtle px-1.5 py-0.5 rounded flex items-center gap-1">
+        {speakerCount || 0} speaker(s) detected
+      </span>
+    );
+  }
+  if (st === "failed") {
+    return (
+      <span className="text-[10px] font-medium uppercase text-danger bg-danger-subtle px-1.5 py-0.5 rounded flex items-center gap-1">
+        <AlertTriangle size={10} />
+        Speaker detection failed
+      </span>
+    );
+  }
+  return (
+    <span className="text-[10px] font-medium uppercase text-text-muted bg-bg-surface border border-border-subtle px-1.5 py-0.5 rounded">
+      Speaker detection disabled
+    </span>
+  );
 }
 
 export function VideoTranscriptionPage() {
@@ -98,6 +122,10 @@ export function VideoTranscriptionPage() {
                   <span>
                     {result?.segments?.length || selectedEntry?.segments?.length || 0} segments
                   </span>
+                  <SpeakerStatusBadge
+                    status={result?.diarization_status || selectedEntry?.diarization_status}
+                    speakerCount={result?.speaker_count || selectedEntry?.speaker_count}
+                  />
                 </div>
               </div>
               <ExportMenu
@@ -144,6 +172,12 @@ export function VideoTranscriptionPage() {
                     <div className="text-[11px] text-text-muted">
                       {formatDuration(entry.duration_seconds || 0)} · {entry.segments.length}{" "}
                       segments
+                    </div>
+                    <div className="mt-1">
+                      <SpeakerStatusBadge
+                        status={entry.diarization_status}
+                        speakerCount={entry.speaker_count}
+                      />
                     </div>
                   </div>
                 </div>

@@ -17,6 +17,8 @@ export interface VideoTranscriptionResult {
   translated_text: string | null;
   target_language: string | null;
   duration_seconds: number;
+  diarization_status: string;
+  speaker_count: number;
 }
 
 export interface VideoTranscriptionEntry {
@@ -31,6 +33,8 @@ export interface VideoTranscriptionEntry {
   summary: string | null;
   segments: DiarizedSegment[];
   created_at: string;
+  diarization_status: string;
+  speaker_count: number;
 }
 
 export type TranscriptionStep =

@@ -3,13 +3,20 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+use crate::transcription::merge::{crear_parrafos, MergeSegment};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportEntry {
     pub id: i64,
+    #[serde(default)]
     pub timestamp: String,
     pub language: String,
     pub original_text: String,
     pub translation: Option<String>,
+    #[serde(default)]
+    pub speaker: Option<String>,
+    #[serde(default)]
+    pub duration: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,21 +60,56 @@ fn format_timestamp_vtt(timestamp: &str) -> String {
     }
 }
 
+/// Duración efectiva de una entrada: la real si existe, si no 3 segundos.
+fn entry_duration(duration: Option<f64>) -> f64 {
+    duration.unwrap_or(3.0)
+}
+
+/// Etiqueta legible de un hablante: `SPEAKER_00` → `Speaker 0`.
+fn speaker_label(speaker: &str) -> String {
+    if let Some(idx) = speaker.strip_prefix("SPEAKER_") {
+        return match idx.parse::<u32>() {
+            Ok(n) => format!("Speaker {}", n),
+            Err(_) => format!("Speaker {}", idx),
+        };
+    }
+    speaker.to_string()
+}
+
+/// Prefijo `[Speaker X] ` para insertar en el texto cuando hay hablante.
+fn speaker_prefix(speaker: &Option<String>) -> String {
+    speaker
+        .as_ref()
+        .map(|s| format!("[{}] ", speaker_label(s)))
+        .unwrap_or_default()
+}
+
+/// Fin de la entrada como RFC3339 (start + duration, o fallback +3s).
+fn end_timestamp(entry: &ExportEntry) -> String {
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&entry.timestamp) {
+        let duration_ms = (entry_duration(entry.duration) * 1000.0) as i64;
+        let end_dt = dt + chrono::Duration::milliseconds(duration_ms);
+        end_dt.to_rfc3339()
+    } else {
+        let duration_s = entry_duration(entry.duration);
+        format!(
+            "1970-01-01T00:00:{:02}.{:03}Z",
+            (duration_s as u64) % 60,
+            ((duration_s.fract() * 1000.0) as u32)
+        )
+    }
+}
+
 pub fn to_srt(entries: &[ExportEntry]) -> String {
     let mut output = String::new();
     for (i, entry) in entries.iter().enumerate() {
         let start = format_timestamp_srt(&entry.timestamp);
-        // Add 3 seconds for end time (approximate)
-        let end = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&entry.timestamp) {
-            let end_dt = dt + chrono::Duration::seconds(3);
-            format_timestamp_srt(&end_dt.to_rfc3339())
-        } else {
-            "00:00:03,000".to_string()
-        };
+        let end = format_timestamp_srt(&end_timestamp(entry));
+        let prefix = speaker_prefix(&entry.speaker);
 
         output.push_str(&format!("{}\n", i + 1));
         output.push_str(&format!("{} --> {}\n", start, end));
-        output.push_str(&format!("{}\n\n", entry.original_text));
+        output.push_str(&format!("{}{}\n\n", prefix, entry.original_text));
     }
     output
 }
@@ -76,27 +118,53 @@ pub fn to_vtt(entries: &[ExportEntry]) -> String {
     let mut output = String::from("WEBVTT\n\n");
     for entry in entries {
         let start = format_timestamp_vtt(&entry.timestamp);
-        let end = if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&entry.timestamp) {
-            let end_dt = dt + chrono::Duration::seconds(3);
-            format_timestamp_vtt(&end_dt.to_rfc3339())
-        } else {
-            "00:00:03.000".to_string()
-        };
+        let end = format_timestamp_vtt(&end_timestamp(entry));
+        let prefix = speaker_prefix(&entry.speaker);
 
         output.push_str(&format!("{} --> {}\n", start, end));
-        output.push_str(&format!("{}\n\n", entry.original_text));
+        output.push_str(&format!("{}{}\n\n", prefix, entry.original_text));
     }
     output
 }
 
 pub fn to_txt(entries: &[ExportEntry]) -> String {
+    let has_durations = entries.iter().any(|e| e.duration.is_some());
+    let has_translations = entries.iter().any(|e| e.translation.is_some());
+
+    // Modo párrafos: solo para transcripciones de vídeo (con duraciones reales)
+    // y sin traducciones por segmento.
+    if has_durations && !has_translations {
+        let blocks: Vec<MergeSegment> = entries
+            .iter()
+            .map(|e| {
+                let start = parse_timestamp_to_seconds(&e.timestamp);
+                MergeSegment {
+                    start,
+                    end: start + entry_duration(e.duration),
+                    text: format!("{}{}", speaker_prefix(&e.speaker), e.original_text.trim()),
+                }
+            })
+            .collect();
+
+        return crear_parrafos(&blocks, 45.0)
+            .iter()
+            .map(|p| p.text.trim().to_string())
+            .filter(|t| !t.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n\n");
+    }
+
     entries
         .iter()
         .map(|e| {
+            let prefix = speaker_prefix(&e.speaker);
             if let Some(ref translation) = e.translation {
-                format!("{}\n[Translation: {}]\n", e.original_text, translation)
+                format!(
+                    "{}{}\n[Translation: {}]",
+                    prefix, e.original_text, translation
+                )
             } else {
-                e.original_text.clone()
+                format!("{}{}", prefix, e.original_text)
             }
         })
         .collect::<Vec<_>>()
@@ -139,7 +207,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     for entry in entries {
         let start_sec = parse_timestamp_to_seconds(&entry.timestamp);
-        let end_sec = start_sec + 3.0; // approximate 3-second duration
+        let end_sec = start_sec + entry_duration(entry.duration);
 
         let start = format_timestamp_ass(start_sec);
         let end = format_timestamp_ass(end_sec);
@@ -147,9 +215,14 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         // Escape ASS special characters
         let text = entry.original_text.replace('\n', "\\N");
 
+        let name = match &entry.speaker {
+            Some(s) => speaker_label(s),
+            None => String::new(),
+        };
+
         body.push_str(&format!(
-            "Dialogue: 0,{},{},Default,,0,0,0,,{}\n",
-            start, end, text
+            "Dialogue: 0,{},{},Default,{},0,0,0,,{}\n",
+            start, end, name, text
         ));
     }
 
@@ -158,13 +231,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 fn parse_timestamp_to_seconds(timestamp: &str) -> f64 {
     if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(timestamp) {
-        dt.time().num_seconds_from_midnight() as f64 + dt.time().nanosecond() as f64 / 1_000_000_000.0
+        dt.time().num_seconds_from_midnight() as f64
+            + dt.time().nanosecond() as f64 / 1_000_000_000.0
     } else {
         0.0
     }
 }
 
-pub fn export_entries(entries: &[ExportEntry], format: &ExportFormat, path: &PathBuf) -> anyhow::Result<()> {
+pub fn export_entries(
+    entries: &[ExportEntry],
+    format: &ExportFormat,
+    path: &PathBuf,
+) -> anyhow::Result<()> {
     let content = match format {
         ExportFormat::Srt => to_srt(entries),
         ExportFormat::Vtt => to_vtt(entries),
@@ -208,6 +286,8 @@ mod tests {
                 language: "en".to_string(),
                 original_text: "Hello, this is a test.".to_string(),
                 translation: None,
+                speaker: None,
+                duration: None,
             },
             ExportEntry {
                 id: 2,
@@ -215,6 +295,31 @@ mod tests {
                 language: "en".to_string(),
                 original_text: "The second segment.".to_string(),
                 translation: Some("El segundo segmento.".to_string()),
+                speaker: None,
+                duration: None,
+            },
+        ]
+    }
+
+    fn video_entries() -> Vec<ExportEntry> {
+        vec![
+            ExportEntry {
+                id: 1,
+                timestamp: "1970-01-01T00:00:05.000Z".to_string(),
+                language: "es".to_string(),
+                original_text: "Primera frase completa.".to_string(),
+                translation: None,
+                speaker: Some("SPEAKER_00".to_string()),
+                duration: Some(2.5),
+            },
+            ExportEntry {
+                id: 2,
+                timestamp: "1970-01-01T00:00:09.000Z".to_string(),
+                language: "es".to_string(),
+                original_text: "Segunda frase.".to_string(),
+                translation: None,
+                speaker: Some("SPEAKER_01".to_string()),
+                duration: Some(3.0),
             },
         ]
     }
@@ -246,6 +351,86 @@ mod tests {
         assert!(txt.contains("Hello, this is a test."));
         assert!(txt.contains("The second segment."));
         assert!(txt.contains("[Translation: El segundo segmento.]"));
+    }
+
+    #[test]
+    fn test_video_txt_paragraphs() {
+        let entries = video_entries();
+        let txt = to_txt(&entries);
+        // Cada bloque tiene el prefijo de hablante dentro del párrafo.
+        assert!(txt.contains("[Speaker 0] Primera frase completa."));
+        assert!(txt.contains("[Speaker 1] Segunda frase."));
+    }
+
+    #[test]
+    fn test_txt_speaker_flat_mode() {
+        let mut entries = test_entries();
+        // Speaker sin duración: modo plano conservado con prefijo.
+        entries[1].speaker = Some("SPEAKER_00".to_string());
+        let txt = to_txt(&entries);
+        assert!(txt.contains("The second segment."));
+        assert!(txt.contains("[Speaker 0] The second segment."));
+    }
+
+    #[test]
+    fn test_srt_uses_real_duration() {
+        let entries = video_entries();
+        let srt = to_srt(&entries);
+        assert!(srt.contains("00:00:05,000 --> 00:00:07,500"));
+        assert!(srt.contains("[Speaker 0] Primera frase completa."));
+        assert!(srt.contains("00:00:09,000 --> 00:00:12,000"));
+        assert!(srt.contains("[Speaker 1] Segunda frase."));
+    }
+
+    #[test]
+    fn test_srt_falls_back_when_no_duration() {
+        let entries = test_entries();
+        let srt = to_srt(&entries);
+        assert!(srt.contains("10:30:00,000 --> 10:30:03,000"));
+    }
+
+    #[test]
+    fn test_vtt_uses_real_duration() {
+        let entries = video_entries();
+        let vtt = to_vtt(&entries);
+        assert!(vtt.contains("00:00:05.000 --> 00:00:07.500"));
+        assert!(vtt.contains("[Speaker 0] Primera frase completa."));
+    }
+
+    #[test]
+    fn test_ass_uses_name_field_and_duration() {
+        let entries = video_entries();
+        let ass = to_ass(&entries);
+        assert!(ass.contains(
+            "Dialogue: 0,0:00:05.00,0:00:07.50,Default,Speaker 0,0,0,0,,Primera frase completa."
+        ));
+        assert!(ass
+            .contains("Dialogue: 0,0:00:09.00,0:00:12.00,Default,Speaker 1,0,0,0,,Segunda frase."));
+    }
+
+    #[test]
+    fn test_json_includes_speaker_and_duration() {
+        let entries = video_entries();
+        let json = to_json(&entries);
+        assert!(json.contains("\"speaker\": \"SPEAKER_00\""));
+        assert!(json.contains("\"duration\": 2.5"));
+    }
+
+    #[test]
+    fn test_json_missing_fields_default() {
+        // JSON antiguo sin speaker/duration sigue parseándose.
+        let json = r#"[{"id":1,"timestamp":"2024-01-15T10:30:00.000Z","language":"en","original_text":"hi","translation":null}]"#;
+        let parsed: Vec<ExportEntry> = serde_json::from_str(json).unwrap();
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].speaker, None);
+        assert_eq!(parsed[0].duration, None);
+    }
+
+    #[test]
+    fn test_speaker_label() {
+        assert_eq!(speaker_label("SPEAKER_00"), "Speaker 0");
+        assert_eq!(speaker_label("SPEAKER_01"), "Speaker 1");
+        assert_eq!(speaker_label("persona"), "persona");
     }
 
     #[test]

@@ -1,12 +1,14 @@
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use tauri::{State, Emitter};
+use crate::asr::engine::EngineKind;
 use crate::asr::AsrEngine;
-use crate::whisper::model::ModelManager;
+use crate::ct2::models as ct2_models;
 use crate::models::ModelDownloader;
-use crate::sherpa::models as sherpa_models;
 use crate::settings::AppConfig;
+use crate::sherpa::models as sherpa_models;
+use crate::whisper::model::ModelManager;
 use serde::Serialize;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use tauri::{Emitter, State};
 use tracing::info;
 
 #[derive(Serialize)]
@@ -52,6 +54,18 @@ pub async fn list_available_models(
             downloaded: sherpa_models::model_dir(&models_dir, m.name).exists(),
         });
     }
+    for m in ct2_models::Ct2ModelInfo::available() {
+        let dir = ct2_models::model_dir(&models_dir, m.name);
+        out.push(AvailableModel {
+            name: m.name.to_string(),
+            label: m.label.to_string(),
+            engine: "ctranslate2".to_string(),
+            size_mb: m.size_mb,
+            languages: "Multilingual (99 languages)".to_string(),
+            description: m.description.to_string(),
+            downloaded: ct2_models::is_complete(&dir),
+        });
+    }
     Ok(out)
 }
 
@@ -64,6 +78,14 @@ pub async fn download_model(
     {
         let manager = model_manager.lock().map_err(|e| e.to_string())?;
         models_dir = manager.models_dir().clone();
+    }
+
+    if ct2_models::Ct2ModelInfo::find(&model_name).is_some() {
+        let dir = ct2_models::download(&model_name, &models_dir)
+            .await
+            .map_err(|e| format!("Download failed: {}", e))?;
+        info!("CTranslate2 model '{}' downloaded to {:?}", model_name, dir);
+        return Ok(format!("Model '{}' downloaded", model_name));
     }
 
     if sherpa_models::is_sherpa_model(&model_name) {
@@ -83,7 +105,8 @@ pub async fn download_model(
     }
 
     let downloader = ModelDownloader::new(models_dir);
-    downloader.download(&model_name)
+    downloader
+        .download(&model_name)
         .await
         .map_err(|e| format!("Download failed: {}", e))?;
 
@@ -101,6 +124,15 @@ pub async fn delete_model(
         manager.models_dir().clone()
     };
 
+    if ct2_models::Ct2ModelInfo::find(&model_name).is_some() {
+        let dirn = ct2_models::model_dir(&models_dir, &model_name);
+        if dirn.exists() {
+            std::fs::remove_dir_all(&dirn).map_err(|e| format!("Delete failed: {}", e))?;
+            info!("CTranslate2 model '{}' deleted", model_name);
+        }
+        return Ok(format!("Model '{}' deleted", model_name));
+    }
+
     if sherpa_models::is_sherpa_model(&model_name) {
         let dir = sherpa_models::model_dir(&models_dir, &model_name);
         if dir.exists() {
@@ -111,7 +143,8 @@ pub async fn delete_model(
     }
 
     let manager = model_manager.lock().map_err(|e| e.to_string())?;
-    manager.delete_model(&model_name)
+    manager
+        .delete_model(&model_name)
         .map_err(|e| format!("Delete failed: {}", e))?;
     info!("Model '{}' deleted", model_name);
     Ok(format!("Model '{}' deleted", model_name))
@@ -125,6 +158,7 @@ pub async fn list_downloaded_models(
         let manager = model_manager.lock().map_err(|e| e.to_string())?;
         let mut names = manager.list_downloaded();
         names.extend(sherpa_models::list_downloaded(manager.models_dir()));
+        names.extend(ct2_models::list_downloaded(manager.models_dir()));
         names.sort();
         names
     };
@@ -143,33 +177,19 @@ pub async fn load_model(
         manager.models_dir().clone()
     };
 
-    let model_path: PathBuf = if sherpa_models::is_sherpa_model(&model_name) {
-        let dir = sherpa_models::model_dir(&models_dir, &model_name);
-        if !dir.exists() {
-            return Err(format!("Model '{}' is not downloaded", model_name));
-        }
-        dir
-    } else {
-        {
-            let manager = model_manager.lock().map_err(|e| e.to_string())?;
-            if !manager.is_downloaded(&model_name) {
-                return Err(format!("Model '{}' is not downloaded", model_name));
-            }
-        }
-        models_dir.join(format!("ggml-{}.bin", model_name))
-    };
+    let (model_path, desired_kind) =
+        resolve_catalog_model(&model_name, &models_dir, &model_manager)?;
 
-    let gpu = config.lock().map_err(|e| e.to_string())?.whisper.gpu;
-
-    let desired_kind = if sherpa_models::is_sherpa_model(&model_name) {
-        crate::asr::engine::EngineKind::Sherpa
-    } else {
-        crate::asr::engine::EngineKind::Whisper
+    let (gpu, compute_type) = {
+        let cfg = config.lock().map_err(|e| e.to_string())?;
+        (cfg.whisper.gpu, cfg.whisper.compute_type.clone())
     };
 
     let mut engine = asr_engine.lock().map_err(|e| e.to_string())?;
     engine.switch_kind(desired_kind);
-    engine.load_model(&model_path, gpu)
+    engine.set_compute_type(&compute_type);
+    engine
+        .load_model(&model_path, gpu)
         .map_err(|e| format!("Failed to load model: {}", e))?;
 
     info!("Model '{}' loaded successfully", model_name);
@@ -189,34 +209,20 @@ pub async fn switch_model(
         manager.models_dir().clone()
     };
 
-    let model_path: PathBuf = if sherpa_models::is_sherpa_model(&model_name) {
-        let dir = sherpa_models::model_dir(&models_dir, &model_name);
-        if !dir.exists() {
-            return Err(format!("Model '{}' is not downloaded", model_name));
-        }
-        dir
-    } else {
-        {
-            let manager = model_manager.lock().map_err(|e| e.to_string())?;
-            if !manager.is_downloaded(&model_name) {
-                return Err(format!("Model '{}' is not downloaded", model_name));
-            }
-        }
-        models_dir.join(format!("ggml-{}.bin", model_name))
-    };
+    let (model_path, desired_kind) =
+        resolve_catalog_model(&model_name, &models_dir, &model_manager)?;
 
-    let gpu = config.lock().map_err(|e| e.to_string())?.whisper.gpu;
-
-    let desired_kind = if sherpa_models::is_sherpa_model(&model_name) {
-        crate::asr::engine::EngineKind::Sherpa
-    } else {
-        crate::asr::engine::EngineKind::Whisper
+    let (gpu, compute_type) = {
+        let cfg = config.lock().map_err(|e| e.to_string())?;
+        (cfg.whisper.gpu, cfg.whisper.compute_type.clone())
     };
 
     {
         let mut engine = asr_engine.lock().map_err(|e| e.to_string())?;
         engine.switch_kind(desired_kind);
-        engine.load_model(&model_path, gpu)
+        engine.set_compute_type(&compute_type);
+        engine
+            .load_model(&model_path, gpu)
             .map_err(|e| format!("Failed to load model: {}", e))?;
     }
 
@@ -227,12 +233,50 @@ pub async fn switch_model(
         cfg.save().map_err(|e| e.to_string())?;
     }
 
-    let _ = app_handle.emit("model-changed", serde_json::json!({
-        "model": model_name,
-    }));
+    let _ = app_handle.emit(
+        "model-changed",
+        serde_json::json!({
+            "model": model_name,
+        }),
+    );
 
     info!("Switched to model '{}' and saved config", model_name);
     Ok(format!("Model '{}' loaded", model_name))
+}
+
+/// Resolve the engine kind and on-disk path for a catalog model, preferring
+/// the more specific catalogs (ctranslate2, sherpa) before the ggml fallback.
+fn resolve_catalog_model(
+    model_name: &str,
+    models_dir: &Path,
+    model_manager: &Arc<Mutex<ModelManager>>,
+) -> Result<(PathBuf, EngineKind), String> {
+    if ct2_models::Ct2ModelInfo::find(model_name).is_some() {
+        let dir = ct2_models::model_dir(models_dir, model_name);
+        if !ct2_models::is_complete(&dir) {
+            return Err(format!("Model '{}' is not downloaded", model_name));
+        }
+        return Ok((dir, EngineKind::Ctranslate2));
+    }
+
+    if sherpa_models::is_sherpa_model(model_name) {
+        let dir = sherpa_models::model_dir(models_dir, model_name);
+        if !dir.exists() {
+            return Err(format!("Model '{}' is not downloaded", model_name));
+        }
+        return Ok((dir, EngineKind::Sherpa));
+    }
+
+    {
+        let manager = model_manager.lock().map_err(|e| e.to_string())?;
+        if !manager.is_downloaded(model_name) {
+            return Err(format!("Model '{}' is not downloaded", model_name));
+        }
+    }
+    Ok((
+        models_dir.join(format!("ggml-{}.bin", model_name)),
+        EngineKind::Whisper,
+    ))
 }
 
 #[tauri::command]

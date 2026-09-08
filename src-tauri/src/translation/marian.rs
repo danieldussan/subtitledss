@@ -1,7 +1,7 @@
-use std::path::PathBuf;
 use candle_core::{DType, Device, Tensor, D};
 use candle_nn::VarBuilder;
 use candle_transformers::models::marian;
+use std::path::PathBuf;
 use tokenizers::Tokenizer;
 use tracing::info;
 
@@ -109,9 +109,7 @@ impl MarianEngine {
                 TranslationDirection::EsToEn => MarianModelInfo::es_en(),
             };
             let manager = &self.manager;
-            tokio::task::block_in_place(|| {
-                rt.block_on(manager.download_async(&info))
-            })?;
+            tokio::task::block_in_place(|| rt.block_on(manager.download_async(&info)))?;
         }
 
         let device = Device::Cpu;
@@ -119,28 +117,35 @@ impl MarianEngine {
         // Build config
         let config = match dir {
             TranslationDirection::EnToEs => marian::Config::opus_mt_en_es(),
-            TranslationDirection::EsToEn => {
-                match self.build_config_from_repo() {
-                    Ok(c) => c,
-                    Err(e) => {
-                        tracing::warn!("Failed to load ES→EN config from repo ({}), using hardcoded fallback", e);
-                        Self::opus_mt_es_en()
-                    }
+            TranslationDirection::EsToEn => match self.build_config_from_repo() {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to load ES→EN config from repo ({}), using hardcoded fallback",
+                        e
+                    );
+                    Self::opus_mt_es_en()
                 }
-            }
+            },
         };
 
         // Load tokenizers
-        let src_tokenizer = Tokenizer::from_file(self.manager.src_tokenizer_path(dir.pair_key()))
-            .map_err(|e| anyhow::anyhow!("Failed to load source tokenizer: {}", e))?;
-        let tgt_tokenizer = Tokenizer::from_file(self.manager.tgt_tokenizer_path(dir.pair_key()))
-            .map_err(|e| anyhow::anyhow!("Failed to load target tokenizer: {}", e))?;
+        let src_tokenizer =
+            Tokenizer::from_file(self.manager.src_tokenizer_path(dir.pair_key()))
+                .map_err(|e| anyhow::anyhow!("Failed to load source tokenizer: {}", e))?;
+        let tgt_tokenizer =
+            Tokenizer::from_file(self.manager.tgt_tokenizer_path(dir.pair_key()))
+                .map_err(|e| anyhow::anyhow!("Failed to load target tokenizer: {}", e))?;
 
         // Load model weights
         let model_path = self.manager.model_path(dir.pair_key());
         info!("Loading Marian model from {:?}", model_path);
         let vb = unsafe {
-            VarBuilder::from_mmaped_safetensors(&[model_path.to_str().unwrap()], DType::F32, &device)?
+            VarBuilder::from_mmaped_safetensors(
+                &[model_path.to_str().unwrap()],
+                DType::F32,
+                &device,
+            )?
         };
         let model = marian::MTModel::new(&config, vb)?;
 
@@ -196,9 +201,7 @@ impl MarianEngine {
             let logits = loaded.model.decode(&input_ids, &encoder_xs, step)?;
             let logits = logits.squeeze(0)?;
             let logits = logits.get(logits.dim(0)? - 1)?;
-            let next_id = logits
-                .argmax(D::Minus1)?
-                .to_scalar::<u32>()?;
+            let next_id = logits.argmax(D::Minus1)?.to_scalar::<u32>()?;
             output_ids.push(next_id);
 
             if next_id == config.eos_token_id || next_id == config.forced_eos_token_id {
@@ -271,7 +274,8 @@ impl MarianEngine {
         Ok(marian::Config {
             vocab_size: json["vocab_size"].as_u64().unwrap_or(65001) as usize,
             decoder_vocab_size: json["decoder_vocab_size"].as_u64().map(|v| v as usize),
-            max_position_embeddings: json["max_position_embeddings"].as_u64().unwrap_or(512) as usize,
+            max_position_embeddings: json["max_position_embeddings"].as_u64().unwrap_or(512)
+                as usize,
             encoder_layers: json["encoder_layers"].as_u64().unwrap_or(6) as usize,
             encoder_ffn_dim: json["encoder_ffn_dim"].as_u64().unwrap_or(2048) as usize,
             encoder_attention_heads: json["encoder_attention_heads"].as_u64().unwrap_or(8) as usize,
@@ -287,7 +291,9 @@ impl MarianEngine {
             pad_token_id: json["pad_token_id"].as_u64().unwrap_or(65000) as u32,
             eos_token_id: json["eos_token_id"].as_u64().unwrap_or(0) as u32,
             forced_eos_token_id: json["forced_eos_token_id"].as_u64().unwrap_or(0) as u32,
-            share_encoder_decoder_embeddings: json["share_encoder_decoder_embeddings"].as_bool().unwrap_or(true),
+            share_encoder_decoder_embeddings: json["share_encoder_decoder_embeddings"]
+                .as_bool()
+                .unwrap_or(true),
         })
     }
 }
@@ -339,8 +345,14 @@ mod tests {
 
     #[test]
     fn test_direction_from_langs() {
-        assert_eq!(TranslationDirection::from_langs("en", "es"), Some(TranslationDirection::EnToEs));
-        assert_eq!(TranslationDirection::from_langs("es", "en"), Some(TranslationDirection::EsToEn));
+        assert_eq!(
+            TranslationDirection::from_langs("en", "es"),
+            Some(TranslationDirection::EnToEs)
+        );
+        assert_eq!(
+            TranslationDirection::from_langs("es", "en"),
+            Some(TranslationDirection::EsToEn)
+        );
         assert_eq!(TranslationDirection::from_langs("en", "fr"), None);
     }
 }

@@ -1,7 +1,7 @@
-use std::sync::{Arc, Mutex};
-use tauri::State;
 use crate::translation::marian::MarianEngine;
 use crate::translation::model::{MarianModelInfo, MarianModelManager};
+use std::sync::{Arc, Mutex};
+use tauri::State;
 use tracing::info;
 
 #[tauri::command]
@@ -11,21 +11,35 @@ pub async fn download_marian_model(
     marian_engine: State<'_, Arc<Mutex<MarianEngine>>>,
 ) -> Result<String, String> {
     if !MarianEngine::is_supported(&source_lang, &target_lang) {
-        return Err(format!("Unsupported language pair: {} → {}", source_lang, target_lang));
+        return Err(format!(
+            "Unsupported language pair: {} → {}",
+            source_lang, target_lang
+        ));
     }
 
     {
         let engine = marian_engine.lock().map_err(|e| e.to_string())?;
         if engine.is_downloaded(&source_lang, &target_lang) {
-            info!("Marian model {}→{} already downloaded", source_lang, target_lang);
-            return Ok(format!("Model {}→{} already downloaded", source_lang, target_lang));
+            info!(
+                "Marian model {}→{} already downloaded",
+                source_lang, target_lang
+            );
+            return Ok(format!(
+                "Model {}→{} already downloaded",
+                source_lang, target_lang
+            ));
         }
     }
 
     let info = match (source_lang.as_str(), target_lang.as_str()) {
         ("en", "es") => MarianModelInfo::en_es(),
         ("es", "en") => MarianModelInfo::es_en(),
-        _ => return Err(format!("Unsupported language pair: {} → {}", source_lang, target_lang)),
+        _ => {
+            return Err(format!(
+                "Unsupported language pair: {} → {}",
+                source_lang, target_lang
+            ))
+        }
     };
 
     let models_dir = {
@@ -34,10 +48,15 @@ pub async fn download_marian_model(
     };
 
     let manager = MarianModelManager::new(models_dir);
-    manager.download_async(&info).await
+    manager
+        .download_async(&info)
+        .await
         .map_err(|e| format!("Download failed: {}", e))?;
 
-    info!("Marian model {}→{} downloaded successfully", source_lang, target_lang);
+    info!(
+        "Marian model {}→{} downloaded successfully",
+        source_lang, target_lang
+    );
     Ok(format!("Model {}→{} downloaded", source_lang, target_lang))
 }
 
@@ -58,7 +77,8 @@ pub async fn delete_marian_model(
     marian_engine: State<'_, Arc<Mutex<MarianEngine>>>,
 ) -> Result<String, String> {
     let engine = marian_engine.lock().map_err(|e| e.to_string())?;
-    engine.delete_model(&source_lang, &target_lang)
+    engine
+        .delete_model(&source_lang, &target_lang)
         .map_err(|e| format!("Delete failed: {}", e))?;
     info!("Marian model {}→{} deleted", source_lang, target_lang);
     Ok(format!("Model {}→{} deleted", source_lang, target_lang))

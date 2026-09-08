@@ -44,6 +44,7 @@ hound = "3.5"
 futures-util = "0.3"
 speakrs = { version = "0.5", features = ["load-dynamic"] }
 sherpa-onnx = { version = "1.13.4", default-features = false, features = ["shared"] }
+ct2rs = { version = "0.9.22", default-features = false, features = ["whisper", "ruy"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 cpal = { version = "0.18", features = ["pipewire"] }
@@ -60,7 +61,13 @@ whisper-rs = { version = "0.16", features = ["tracing_backend"] }
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
-cuda = ["whisper-rs/cuda"]
+# ct2rs/cudnn se omite a propósito: el sistema no tiene cuDNN instalado.
+# Cuando instales cuDNN (pip install nvidia-cudnn-cu12) puedes añadirlo aquí.
+cuda = [
+    "whisper-rs/cuda",
+    "ct2rs/cuda",
+    "ct2rs/cuda-dynamic-loading",
+]
 vulkan = ["whisper-rs/vulkan"]
 metal = ["whisper-rs/metal"]
 gpu = ["cuda"]

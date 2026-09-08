@@ -1,7 +1,10 @@
-use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 use std::time::Duration;
-use tokio::task::JoinHandle;
 use tauri::Emitter;
+use tokio::task::JoinHandle;
 use tracing::{info, warn};
 
 use crate::asr::AsrEngine;
@@ -9,9 +12,9 @@ use crate::audio::buffer::RingBuffer;
 use crate::audio::capture::SAMPLES_PUSHED;
 use crate::history::HistoryDb;
 use crate::settings::config::AppConfig;
+use crate::translation::marian::MarianEngine;
 use crate::vad::VadDetector;
 use crate::whisper::params::TranscriptionParams;
-use crate::translation::marian::MarianEngine;
 
 /// 1.5 seconds at 16kHz — smaller chunks for faster iteration
 const CHUNK_SAMPLES: usize = 24000;
@@ -55,8 +58,10 @@ impl TranscriptionPipeline {
         let source_lang = config.translation.source_lang.clone();
         let target_lang = config.translation.target_lang.clone();
 
-        info!("Pipeline starting: language={}, threads={}, gpu={}, translation_enabled={}",
-            language, threads, gpu, translation_enabled);
+        info!(
+            "Pipeline starting: language={}, threads={}, gpu={}, translation_enabled={}",
+            language, threads, gpu, translation_enabled
+        );
 
         let mut vad = VadDetector::new(config.audio.vad_threshold as f32, CHUNK_SAMPLES);
         vad.set_max_silence_frames(2);
@@ -89,7 +94,11 @@ impl TranscriptionPipeline {
                 // Check buffer — drop old audio if falling behind
                 let buffer_snapshot = buffer.lock().ok().map(|buf| {
                     let len = buf.len();
-                    let excess = if len > MAX_BUFFER_SAMPLES { len - CHUNK_SAMPLES } else { 0 };
+                    let excess = if len > MAX_BUFFER_SAMPLES {
+                        len - CHUNK_SAMPLES
+                    } else {
+                        0
+                    };
                     (len, excess)
                 });
                 let (samples_available, buffer_excess) = match buffer_snapshot {
@@ -111,10 +120,13 @@ impl TranscriptionPipeline {
                     if let Ok(mut buf) = buffer.lock() {
                         buf.drain_to(buffer_excess);
                     }
-                    let _ = app_handle.emit("pipeline-status", serde_json::json!({
-                        "status": "dropping_audio",
-                        "dropped_seconds": buffer_excess as f64 / 16000.0,
-                    }));
+                    let _ = app_handle.emit(
+                        "pipeline-status",
+                        serde_json::json!({
+                            "status": "dropping_audio",
+                            "dropped_seconds": buffer_excess as f64 / 16000.0,
+                        }),
+                    );
                 }
 
                 // Check if we have a full chunk
@@ -146,8 +158,7 @@ impl TranscriptionPipeline {
                 if !vad_result.is_speaking {
                     info!(
                         "VAD: silent chunk ({:.1}s, energy={:.4}), skipping transcription",
-                        chunk_seconds,
-                        vad_result.energy,
+                        chunk_seconds, vad_result.energy,
                     );
                     continue;
                 }
@@ -191,17 +202,17 @@ impl TranscriptionPipeline {
                     .join(" ");
 
                 if text.is_empty() {
-                    info!("Empty after filter ({:.1}s, {}ms)", chunk_seconds, elapsed_ms);
+                    info!(
+                        "Empty after filter ({:.1}s, {}ms)",
+                        chunk_seconds, elapsed_ms
+                    );
                     continue;
                 }
 
                 // Filter known hallucination patterns (Canary/others produce
                 // these during silence that slips past VAD)
                 if is_hallucination(&text) {
-                    info!(
-                        "Hallucination filtered ({:.1}s): {}",
-                        chunk_seconds, text
-                    );
+                    info!("Hallucination filtered ({:.1}s): {}", chunk_seconds, text);
                     continue;
                 }
 
@@ -211,14 +222,17 @@ impl TranscriptionPipeline {
                 );
 
                 // Emit transcription immediately (without translation)
-                let _ = app_handle.emit("transcription", serde_json::json!({
-                    "id": chrono::Utc::now().timestamp_millis(),
-                    "text": text,
-                    "translation": serde_json::Value::Null,
-                    "start": segments.first().map(|s| s.start).unwrap_or(0.0),
-                    "end": segments.last().map(|s| s.end).unwrap_or(0.0),
-                    "speed_ratio": speed_ratio,
-                }));
+                let _ = app_handle.emit(
+                    "transcription",
+                    serde_json::json!({
+                        "id": chrono::Utc::now().timestamp_millis(),
+                        "text": text,
+                        "translation": serde_json::Value::Null,
+                        "start": segments.first().map(|s| s.start).unwrap_or(0.0),
+                        "end": segments.last().map(|s| s.end).unwrap_or(0.0),
+                        "speed_ratio": speed_ratio,
+                    }),
+                );
 
                 // Store in history immediately (with translation=null)
                 {
@@ -230,9 +244,7 @@ impl TranscriptionPipeline {
                 }
 
                 // Fire-and-forget translation — does NOT block the loop
-                if translation_enabled
-                    && MarianEngine::is_supported(&source_lang, &target_lang)
-                {
+                if translation_enabled && MarianEngine::is_supported(&source_lang, &target_lang) {
                     let src = source_lang.clone();
                     let tgt = target_lang.clone();
                     let text_clone = text.clone();
@@ -268,10 +280,13 @@ impl TranscriptionPipeline {
                         };
 
                         // Emit translation result to frontend
-                        let _ = app_clone.emit("translation-result", serde_json::json!({
-                            "text": text_for_emit,
-                            "translation": translation,
-                        }));
+                        let _ = app_clone.emit(
+                            "translation-result",
+                            serde_json::json!({
+                                "text": text_for_emit,
+                                "translation": translation,
+                            }),
+                        );
                     });
                 }
             }

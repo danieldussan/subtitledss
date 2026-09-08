@@ -29,6 +29,8 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
   const [language, setLanguage] = useState(config.whisper.language);
   const [threads, setThreads] = useState(config.whisper.threads);
   const [gpu, setGpu] = useState(config.whisper.gpu);
+  const [computeType, setComputeType] = useState(config.whisper.compute_type ?? "int8-auto");
+  const [beamSize, setBeamSize] = useState(config.whisper.beam_size ?? 5);
   const [models, setModels] = useState<AvailableModel[]>([]);
   const [saved, setSaved] = useState(false);
   const [switching, setSwitching] = useState(false);
@@ -51,7 +53,15 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
 
       await onSave({
         ...config,
-        whisper: { ...config.whisper, model, language, threads, gpu },
+        whisper: {
+          ...config.whisper,
+          model,
+          language,
+          threads,
+          gpu,
+          compute_type: computeType,
+          beam_size: beamSize,
+        },
       });
 
       if (model !== config.whisper.model) {
@@ -126,7 +136,7 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
                     </span>
                     <span
                       className={`text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${
-                        m.engine === "sherpa"
+                        m.engine === "sherpa" || m.engine === "ctranslate2"
                           ? "bg-accent-subtle text-accent"
                           : "bg-bg-surface text-text-muted border border-border-subtle"
                       }`}
@@ -169,6 +179,58 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
       <div className="section">
         <div className="section-title">Performance</div>
         <div className="space-y-4">
+          {selectedEngine === "ctranslate2" && (
+            <div>
+              <label className="label mb-0">Compute Type (CTranslate2)</label>
+              <select
+                value={computeType}
+                onChange={(e) => setComputeType(e.target.value)}
+                className="select"
+              >
+                <option value="int8">int8</option>
+                <option value="int8_float16">int8_float16</option>
+                <option value="int8_bfloat16">int8_bfloat16</option>
+                <option value="int8_float32">int8_float32</option>
+                <option value="int16">int16</option>
+                <option value="float16">float16</option>
+                <option value="bfloat16">bfloat16</option>
+                <option value="float32">float32</option>
+                <option value="auto">auto</option>
+                <option value="int8-auto">int8-auto</option>
+                <option value="int8_float16-auto">int8_float16-auto</option>
+                <option value="int8_bfloat16-auto">int8_bfloat16-auto</option>
+                <option value="int16-auto">int16-auto</option>
+                <option value="float16-auto">float16-auto</option>
+                <option value="bfloat16-auto">bfloat16-auto</option>
+              </select>
+              <p className="text-[11px] text-text-muted mt-2">
+                Used by the faster-whisper engine. int8-auto (default) picks int8 on CPU or fp16 on
+                GPU.
+              </p>
+            </div>
+          )}
+
+          {selectedEngine === "ctranslate2" && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="label mb-0">Beam Size</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={beamSize}
+                  onChange={(e) =>
+                    setBeamSize(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))
+                  }
+                  className="input w-20 text-center"
+                />
+              </div>
+              <p className="text-[11px] text-text-muted -mt-1">
+                Search beam for decoding (1–10). Higher = better accuracy, slower.
+              </p>
+            </div>
+          )}
+
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="label mb-0">CPU Threads</label>
@@ -195,7 +257,9 @@ export function WhisperSettings({ config, onSave, loadedModel }: WhisperSettings
                 <p className="text-[11px] text-text-muted">
                   {selectedEngine === "sherpa"
                     ? "CUDA (sherpa-onnx)"
-                    : "CUDA / Vulkan / Metal (whisper.cpp)"}
+                    : selectedEngine === "ctranslate2"
+                      ? "CUDA / ROCm (faster-whisper)"
+                      : "CUDA / Vulkan / Metal (whisper.cpp)"}
                 </p>
               </div>
             </div>

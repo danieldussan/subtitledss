@@ -193,7 +193,7 @@ export function ModelList({ onModelSwitched }: ModelListProps) {
                         </span>
                         <span
                           className={`text-[10px] font-medium uppercase px-1.5 py-0.5 rounded ${
-                            model.engine === "sherpa"
+                            model.engine === "sherpa" || model.engine === "ctranslate2"
                               ? "bg-accent-subtle text-accent"
                               : "bg-bg-surface text-text-muted border border-border-subtle"
                           }`}

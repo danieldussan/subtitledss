@@ -9,7 +9,9 @@ pub async fn get_history(
     state: State<'_, Arc<Mutex<HistoryDb>>>,
 ) -> Result<Vec<HistoryEntry>, String> {
     let db = state.lock().map_err(|e| e.to_string())?;
-    let entries = db.get_all(limit.unwrap_or(100)).map_err(|e| e.to_string())?;
+    let entries = db
+        .get_all(limit.unwrap_or(100))
+        .map_err(|e| e.to_string())?;
     Ok(entries)
 }
 
@@ -20,14 +22,14 @@ pub async fn search_history(
     state: State<'_, Arc<Mutex<HistoryDb>>>,
 ) -> Result<Vec<HistoryEntry>, String> {
     let db = state.lock().map_err(|e| e.to_string())?;
-    let result = db.search(&query, limit.unwrap_or(100)).map_err(|e| e.to_string())?;
+    let result = db
+        .search(&query, limit.unwrap_or(100))
+        .map_err(|e| e.to_string())?;
     Ok(result.entries)
 }
 
 #[tauri::command]
-pub async fn clear_history(
-    state: State<'_, Arc<Mutex<HistoryDb>>>,
-) -> Result<(), String> {
+pub async fn clear_history(state: State<'_, Arc<Mutex<HistoryDb>>>) -> Result<(), String> {
     let db = state.lock().map_err(|e| e.to_string())?;
     db.clear().map_err(|e| e.to_string())?;
     Ok(())

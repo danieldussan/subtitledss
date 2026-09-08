@@ -68,10 +68,9 @@ impl DiarizationEngine {
         };
 
         // Run speakrs pipeline
-        let mut pipeline = speakrs::OwnedDiarizationPipeline::from_pretrained(
-            speakrs::ExecutionMode::Cpu,
-        )
-        .map_err(|e| anyhow::anyhow!("Failed to init speakrs pipeline: {}", e))?;
+        let mut pipeline =
+            speakrs::OwnedDiarizationPipeline::from_pretrained(speakrs::ExecutionMode::Cpu)
+                .map_err(|e| anyhow::anyhow!("Failed to init speakrs pipeline: {}", e))?;
 
         let result = pipeline
             .run(&audio)
