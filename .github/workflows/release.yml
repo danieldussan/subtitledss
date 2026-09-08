@@ -155,7 +155,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build DMG
-        run: bun run tauri build -f metal
+        run: bunx tauri build -f metal
 
       - name: Build raw binary
         run: |
