@@ -54,6 +54,8 @@ jobs:
       - name: Build Rust backend (CPU)
         run: cargo build --release
         working-directory: src-tauri
+        env:
+          SHERPA_ONNX_LIB_DIR: ${{ github.workspace }}/src-tauri/vendor/sherpa
 
       - name: Build AppImage
         run: |
@@ -156,6 +158,8 @@ jobs:
       - name: Build Rust backend (Metal)
         run: cargo build --release --features metal
         working-directory: src-tauri
+        env:
+          SHERPA_ONNX_LIB_DIR: ${{ github.workspace }}/src-tauri/vendor/sherpa
 
       - name: Build DMG
         run: bun run tauri build
