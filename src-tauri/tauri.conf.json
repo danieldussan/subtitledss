@@ -50,8 +50,6 @@
       "vendor/sherpa/libsherpa-onnx-c-api.so": "",
       "vendor/sherpa/libsherpa-onnx-cxx-api.so": "",
       "vendor/sherpa/libonnxruntime.so": "",
-      "vendor/sherpa/libonnxruntime_providers_cuda.so": "",
-      "vendor/sherpa/libonnxruntime_providers_shared.so": "",
       "vendor/sherpa/libsherpa-onnx-c-api.dylib": "",
       "vendor/sherpa/libsherpa-onnx-cxx-api.dylib": "",
       "vendor/sherpa/libonnxruntime.dylib": "",
