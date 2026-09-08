@@ -159,7 +159,6 @@ jobs:
 
       - name: Build DMG
         run: bun run tauri build
-        working-directory: src-tauri
 
       - name: Build raw binary
         run: |
