@@ -63,10 +63,14 @@ jobs:
 
           # Create AppDir structure
           mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/lib/subtitledss
           mkdir -p AppDir/usr/share/applications
           mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
 
           cp src-tauri/target/release/subtitledss AppDir/usr/bin/subtitledss
+          cp src-tauri/vendor/sherpa/libsherpa-onnx-c-api.so AppDir/usr/lib/subtitledss/
+          cp src-tauri/vendor/sherpa/libsherpa-onnx-cxx-api.so AppDir/usr/lib/subtitledss/
+          cp src-tauri/vendor/sherpa/libonnxruntime.so AppDir/usr/lib/subtitledss/
           cp aur/subtitledss.desktop AppDir/usr/share/applications/subtitledss.desktop
           cp src-tauri/icons/icon.png AppDir/usr/share/icons/hicolor/512x512/apps/subtitledss.png
 
@@ -85,11 +89,15 @@ jobs:
           # Create deb structure
           mkdir -p deb/DEBIAN
           mkdir -p deb/usr/bin
+          mkdir -p deb/usr/lib/subtitledss
           mkdir -p deb/usr/share/applications
           mkdir -p deb/usr/share/icons/hicolor/512x512/apps
           mkdir -p deb/usr/share/licenses/subtitledss
 
           cp src-tauri/target/release/subtitledss deb/usr/bin/subtitledss
+          cp src-tauri/vendor/sherpa/libsherpa-onnx-c-api.so deb/usr/lib/subtitledss/
+          cp src-tauri/vendor/sherpa/libsherpa-onnx-cxx-api.so deb/usr/lib/subtitledss/
+          cp src-tauri/vendor/sherpa/libonnxruntime.so deb/usr/lib/subtitledss/
           cp aur/subtitledss.desktop deb/usr/share/applications/subtitledss.desktop
           cp src-tauri/icons/icon.png deb/usr/share/icons/hicolor/512x512/apps/subtitledss.png
           cp LICENSE deb/usr/share/licenses/subtitledss/LICENSE
@@ -150,7 +158,7 @@ jobs:
         working-directory: src-tauri
 
       - name: Build DMG
-        run: cargo tauri build
+        run: bun run tauri build
         working-directory: src-tauri
 
       - name: Build raw binary
