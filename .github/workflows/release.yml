@@ -163,6 +163,8 @@ jobs:
 
       - name: Build DMG
         run: bun run tauri build
+        env:
+          SHERPA_ONNX_LIB_DIR: ${{ github.workspace }}/src-tauri/vendor/sherpa
 
       - name: Build raw binary
         run: |
