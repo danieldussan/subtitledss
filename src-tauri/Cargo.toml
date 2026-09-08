@@ -1,6 +1,6 @@
 [package]
 name = "subtitledss"
-version = "1.3.0"
+version = "1.4.0"
 description = "Real-time subtitle overlay for Linux and macOS"
 authors = ["Daniel Dussan"]
 edition = "2021"
