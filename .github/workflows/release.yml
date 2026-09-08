@@ -16,6 +16,8 @@ jobs:
   build-linux:
     name: Build Linux
     runs-on: ubuntu-latest
+    env:
+      SHERPA_ONNX_LIB_DIR: ${{ github.workspace }}/src-tauri/vendor/sherpa
     steps:
       - uses: actions/checkout@v4
 
@@ -54,8 +56,6 @@ jobs:
       - name: Build Rust backend (CPU)
         run: cargo build --release
         working-directory: src-tauri
-        env:
-          SHERPA_ONNX_LIB_DIR: ${{ github.workspace }}/src-tauri/vendor/sherpa
 
       - name: Build AppImage
         run: |
@@ -136,6 +136,8 @@ jobs:
   build-macos:
     name: Build macOS
     runs-on: macos-latest
+    env:
+      SHERPA_ONNX_LIB_DIR: ${{ github.workspace }}/src-tauri/vendor/sherpa
     steps:
       - uses: actions/checkout@v4
 
@@ -152,19 +154,8 @@ jobs:
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build frontend
-        run: bun run build
-
-      - name: Build Rust backend (Metal)
-        run: cargo build --release --features metal
-        working-directory: src-tauri
-        env:
-          SHERPA_ONNX_LIB_DIR: ${{ github.workspace }}/src-tauri/vendor/sherpa
-
       - name: Build DMG
-        run: bun run tauri build
-        env:
-          SHERPA_ONNX_LIB_DIR: ${{ github.workspace }}/src-tauri/vendor/sherpa
+        run: bun run tauri build -f metal
 
       - name: Build raw binary
         run: |
