@@ -200,6 +200,7 @@ impl HistoryDb {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn insert_video_transcription(
         &self,
         video_path: &str,

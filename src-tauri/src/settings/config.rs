@@ -218,7 +218,7 @@ mod tests {
         dir
     }
 
-    fn temp_config_path(dir: &PathBuf) -> PathBuf {
+    fn temp_config_path(dir: &std::path::Path) -> PathBuf {
         dir.join("config.toml")
     }
 

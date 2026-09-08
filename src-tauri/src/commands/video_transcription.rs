@@ -66,6 +66,7 @@ pub struct VideoTranscriptionState {
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn transcribe_video(
     video_path: String,
     language: Option<String>,
@@ -601,7 +602,7 @@ fn assign_block_speaker(start: f64, end: f64, turns: &[SpeakerTurn]) -> Option<S
             continue;
         }
         let dist = (t.start - start).abs();
-        let cand = (ov, -dist, -t.start as f64, idx);
+        let cand = (ov, -dist, -t.start, idx);
         let better = match &best {
             None => true,
             Some(b) => (cand.0, cand.1, cand.2, cand.3) > (b.0, b.1, b.2, b.3),

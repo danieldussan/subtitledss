@@ -28,6 +28,7 @@ impl EngineKind {
         }
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s {
             "sherpa" => EngineKind::Sherpa,
@@ -43,7 +44,7 @@ impl EngineKind {
 pub enum AsrEngine {
     Whisper(WhisperEngine),
     Sherpa(SherpaEngine),
-    Ctranslate2(Ctranslate2Engine),
+    Ctranslate2(Box<Ctranslate2Engine>),
 }
 
 impl AsrEngine {
@@ -51,7 +52,7 @@ impl AsrEngine {
         match kind {
             EngineKind::Whisper => AsrEngine::Whisper(WhisperEngine::new()),
             EngineKind::Sherpa => AsrEngine::Sherpa(SherpaEngine::new()),
-            EngineKind::Ctranslate2 => AsrEngine::Ctranslate2(Ctranslate2Engine::new()),
+            EngineKind::Ctranslate2 => AsrEngine::Ctranslate2(Box::default()),
         }
     }
 
@@ -112,7 +113,7 @@ impl AsrEngine {
 
     pub fn model_path(&self) -> Option<PathBuf> {
         match self {
-            AsrEngine::Whisper(e) => e.model_path().map(PathBuf::clone),
+            AsrEngine::Whisper(e) => e.model_path().cloned(),
             AsrEngine::Sherpa(e) => e.model_path(),
             AsrEngine::Ctranslate2(e) => e.model_path(),
         }

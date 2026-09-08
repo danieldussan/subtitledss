@@ -221,20 +221,10 @@ pub fn crear_parrafos(
         let texto_actual = actual.text.trim().to_string();
         let numero_caracteres = texto_actual.chars().count();
 
-        let mut cerrar = false;
-
-        // 1. Pausa notable: tema o turno nuevo.
-        if pausa >= PAUSA_MIN {
-            cerrar = true;
-        }
-        // 2. Ya llevamos tiempo y la frase quedó cerrada.
-        else if duracion >= max_paragraph_duration / 2.0 && es_final_de_frase(&texto_actual) {
-            cerrar = true;
-        }
-        // 3. Tope duro: no dejar crecer un párrafo sin salida.
-        else if duracion >= tope_duracion_hard || numero_caracteres >= tope_caracteres {
-            cerrar = true;
-        }
+        let cerrar = pausa >= PAUSA_MIN
+            || (duracion >= max_paragraph_duration / 2.0 && es_final_de_frase(&texto_actual))
+            || duracion >= tope_duracion_hard
+            || numero_caracteres >= tope_caracteres;
 
         if cerrar {
             parrafos.push(actual);

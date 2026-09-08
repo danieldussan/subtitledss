@@ -242,6 +242,6 @@ mod tests {
         // This just verifies the function compiles and returns a bool
         // It may return false if ffmpeg is not installed in CI
         let result = VideoProcessor::check_ffmpeg().await;
-        assert!(result == true || result == false);
+        let _ = result;
     }
 }

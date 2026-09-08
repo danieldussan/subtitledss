@@ -177,8 +177,8 @@ pub fn to_json(entries: &[ExportEntry]) -> String {
 
 fn format_timestamp_ass(seconds: f64) -> String {
     let total_cs = (seconds * 100.0) as u64;
-    let h = total_cs / 3_600_00;
-    let m = (total_cs % 3_600_00) / 6_000;
+    let h = total_cs / 360_000;
+    let m = (total_cs % 360_000) / 6_000;
     let s = (total_cs % 6_000) / 100;
     let cs = total_cs % 100;
     format!("{}:{:02}:{:02}.{:02}", h, m, s, cs)

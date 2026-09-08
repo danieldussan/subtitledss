@@ -14,6 +14,7 @@ use tauri::State;
 use tracing::{error, info};
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn start_capture(
     audio_capture: State<'_, Arc<Mutex<AudioCapture>>>,
     audio_buffer: State<'_, Arc<Mutex<RingBuffer>>>,

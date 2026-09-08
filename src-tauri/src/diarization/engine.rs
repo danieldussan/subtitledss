@@ -16,6 +16,12 @@ pub struct DiarizationEngine {
     initialized: bool,
 }
 
+impl Default for DiarizationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DiarizationEngine {
     pub fn new() -> Self {
         info!("Initializing diarization engine (speakrs)");

@@ -26,6 +26,12 @@ pub struct TranscriptionPipeline {
     task_handle: Option<JoinHandle<()>>,
 }
 
+impl Default for TranscriptionPipeline {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TranscriptionPipeline {
     pub fn new() -> Self {
         Self {

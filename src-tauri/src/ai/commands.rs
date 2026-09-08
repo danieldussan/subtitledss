@@ -65,7 +65,7 @@ pub async fn test_ai_connection(config: AiConfig) -> Result<String, String> {
 
     match builder.send().await {
         Ok(resp) if resp.status().is_success() => {
-            return Ok(format!("Connected to {} ({})", native_url, resp.status()));
+            Ok(format!("Connected to {} ({})", native_url, resp.status()))
         }
         Ok(resp) => {
             let status = resp.status();
