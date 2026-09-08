@@ -3,3 +3,8 @@ rustflags = [
   "-C", "link-arg=-Wl,-rpath,$ORIGIN/../lib/subtitledss",
   "-C", "link-arg=-Wl,--disable-new-dtags",
 ]
+
+[target.aarch64-apple-darwin]
+rustflags = [
+  "-C", "link-arg=-Wl,-rpath,@executable_path/../Resources",
+]

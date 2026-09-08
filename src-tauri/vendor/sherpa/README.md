@@ -1,10 +1,14 @@
 # Vendored sherpa-onnx runtime libraries
 
+Archivos compartidos de sherpa-onnx y onnxruntime para Linux y macOS.
+
+## Linux
+
 `libsherpa-onnx-c-api.so` y `libsherpa-onnx-cxx-api.so` se envían tal cual desde el
 tarball oficial del release de sherpa-onnx. `libonnxruntime.so` es **reemplazado**
 por la versión correcta de onnxruntime (ver abajo).
 
-## Procedencia
+### Procedencia (Linux)
 
 | Archivo | Fuente | Comentario |
 |---|---|---|
@@ -23,11 +27,30 @@ por la versión correcta de onnxruntime (ver abajo).
 automáticamente con `scripts/fetch-cuda-libs.sh` antes del build, o se copian
 manualmente del tarball.
 
-URLs de descarga:
+URLs de descarga (Linux):
 
 - `https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.4/sherpa-onnx-v1.13.4-linux-x64-shared-lib.tar.bz2`
 - `https://github.com/microsoft/onnxruntime/releases/download/v1.27.0/onnxruntime-linux-x64-1.27.0.tgz`
 - `https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.4/sherpa-onnx-v1.13.4-cuda-12.x-cudnn-9.x-linux-x64-gpu.tar.bz2` (CUDA provider, descargado via script)
+
+## macOS (ARM64 / Apple Silicon)
+
+Los `.dylib` se obtienen del tarball `shared-lib` de sherpa-onnx para macOS ARM64.
+A diferencia de Linux, **no es necesario reemplazar onnxruntime**: el tarball de
+sherpa-onnx ya incluye onnxruntime 1.27.0 con la API correcta.
+
+### Procedencia (macOS)
+
+| Archivo | Fuente | Comentario |
+|---|---|---|
+| `libsherpa-onnx-c-api.dylib` | `sherpa-onnx-v1.13.4-osx-arm64-shared-lib.tar.bz2` | Mach-O arm64, NEEDED `libonnxruntime.dylib` |
+| `libsherpa-onnx-cxx-api.dylib` | mismo tarball | Mach-O arm64 |
+| `libonnxruntime.dylib` | mismo tarball | Mach-O arm64, v1.27.0 (API 27) |
+| `libonnxruntime.1.27.0.dylib` | mismo tarball | Versión versionada, referenciada por `libonnxruntime.dylib` |
+
+URL de descarga (macOS):
+
+- `https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.4/sherpa-onnx-v1.13.4-osx-arm64-shared-lib.tar.bz2`
 
 ## Por qué el reemplazo de onnxruntime
 
@@ -63,6 +86,8 @@ es siempre relativa al directorio donde estén los `.so`.
 
 ## Empaquetado / release
 
+### Linux
+
 - `tauri.conf.json` → `bundle.resources` empaqueta estos `.so` en
   `usr/lib/<product>/` (deb: `/usr/lib/subtitledss/`, rpm: `/usr/lib/subtitledss/`,
   AppImage: `usr/lib/subtitledss/`).
@@ -74,6 +99,15 @@ es siempre relativa al directorio donde estén los `.so`.
 - `linux.deb.depends` y `linux.rpm.depends` apuntan a los paquetes **runtime**
   (`libasound2`, `libpipewire-0.3-0` / `alsa-lib`, `pipewire-libs`), no a los
   `-dev`; tauri agrega automáticamente webkit2gtk/gtk/appindicator.
+
+### macOS
+
+- `tauri.conf.json` → `bundle.resources` empaqueta los `.dylib` en
+  `Contents/Resources/` del `.app` bundle.
+- `.cargo/config.toml` configura RPATH `@executable_path/../Resources` para
+  `aarch64-apple-darwin`, de modo que el binario encuentre las dylibs en el bundle.
+- `macOS.entitlements` solicita `com.apple.security.device.audio-input` para
+  acceso al micrófono.
 
 ### AppImage en Arch Linux
 
@@ -92,10 +126,27 @@ workarounds.
 
 ## Verificación
 
+### Linux
+
 ```sh
 readelf -d vendor/sherpa/libsherpa-onnx-c-api.so | grep -E "NEEDED|RPATH"
 readelf -d vendor/sherpa/libonnxruntime.so | grep SONAME
 readelf -d target/release/subtitledss | grep -E "RPATH|RUNPATH"
+```
+
+### macOS
+
+```sh
+# Verificar que los .dylib son Mach-O arm64
+file vendor/sherpa/libsherpa-onnx-c-api.dylib
+file vendor/sherpa/libonnxruntime.dylib
+
+# Verificar dependencias
+dyld_info -dependencies vendor/sherpa/libsherpa-onnx-c-api.dylib 2>/dev/null || \
+  otool -L vendor/sherpa/libsherpa-onnx-c-api.dylib
+
+# Verificar RPATH del binario (después del build)
+otool -l target/release/subtitledss | grep -A2 LC_RPATH
 ```
 
 ## Licencias
