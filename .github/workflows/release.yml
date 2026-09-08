@@ -162,20 +162,20 @@ jobs:
           tar -czf subtitledss-${GITHUB_REF_NAME#v}-aarch64.tar.gz \
             -C src-tauri/target/release subtitledss
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-builds
-          path: |
-            src-tauri/target/release/bundle/dmg/*.dmg
-            subtitledss-*.tar.gz
-
       - name: Rename DMG for release
         run: |
           DMG=$(ls src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null | head -1)
           if [ -n "$DMG" ]; then
             cp "$DMG" "subtitledss-${GITHUB_REF_NAME#v}-aarch64.dmg"
           fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-builds
+          path: |
+            subtitledss-*.dmg
+            subtitledss-*.tar.gz
 
   create-release:
     name: Create Release
